@@ -27,6 +27,21 @@ function wochentagVon(datum: string): string {
   return WOCHENTAGE[tag]
 }
 
+// Für die Heatmap: lückenlose Stundenleiste von der ersten bis zur letzten
+// vorkommenden Stunde, nicht nur die Stunden mit Reservierungen – sonst
+// sähe eine ruhige Stunde zwischen zwei belebten genauso aus wie "keine
+// Daten vorhanden" statt "null Reservierungen".
+function stundenMitLuecken(stundeMap: Map<string, number>): StundeAuswertung[] {
+  const stunden = [...stundeMap.keys()].map(Number).sort((a, b) => a - b)
+  if (stunden.length === 0) return []
+  const ergebnis: StundeAuswertung[] = []
+  for (let h = stunden[0]; h <= stunden[stunden.length - 1]; h++) {
+    const key = String(h).padStart(2, '0')
+    ergebnis.push({ stunde: `${key} Uhr`, anzahl: stundeMap.get(key) ?? 0 })
+  }
+  return ergebnis
+}
+
 export function berechneAuslastung(reservierungen: Reservierung[]): TischplanAuswertung {
   const aktive = reservierungen.filter((r) => r.status !== 'storniert')
   const gesamtGaeste = aktive.reduce((summe, r) => summe + r.anzahlPersonen, 0)
@@ -47,9 +62,7 @@ export function berechneAuslastung(reservierungen: Reservierung[]): TischplanAus
   }
 
   const proWochentag = WOCHENTAG_REIHENFOLGE.map((tag) => ({ wochentag: tag, ...wochentagMap.get(tag)! }))
-  const proStunde = [...stundeMap.entries()]
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([stunde, anzahl]) => ({ stunde: `${stunde} Uhr`, anzahl }))
+  const proStunde = stundenMitLuecken(stundeMap)
 
   const meistgefragterWochentag = proWochentag.reduce(
     (best, aktuell) => (aktuell.anzahl > (best?.anzahl ?? 0) ? aktuell : best),

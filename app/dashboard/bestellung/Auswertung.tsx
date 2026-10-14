@@ -3,6 +3,7 @@
 import { useEffect, useState, useTransition } from 'react'
 import { bestellAnalyseLadenAktion } from './actions'
 import type { BestellungAuswertung } from '@/lib/bestellung/auswertung'
+import { BalkenReihe, Kpi, StundenHeatmap } from '@/components/Auswertung'
 import { cn } from '@/lib/utils'
 
 type Zeitraum = 7 | 30 | 90
@@ -25,28 +26,6 @@ function prozent(anteil: number): string {
   return `${Math.round(anteil * 100)} %`
 }
 
-function Balken({ label, anzahl, max }: { label: string; anzahl: number; max: number }) {
-  const hoeheProzent = max > 0 ? Math.max((anzahl / max) * 100, anzahl > 0 ? 6 : 0) : 0
-  return (
-    <div className="flex flex-1 flex-col items-center gap-1" title={`${label}: ${anzahl} Bestellungen`}>
-      <span className="text-[11px] font-semibold text-foreground">{anzahl || ''}</span>
-      <div className="flex h-24 w-full items-end rounded-md bg-card-dim">
-        <div className="w-full rounded-md bg-accent transition-all" style={{ height: `${hoeheProzent}%` }} />
-      </div>
-      <span className="text-[11px] text-muted">{label}</span>
-    </div>
-  )
-}
-
-function Kpi({ label, wert }: { label: string; wert: string }) {
-  return (
-    <div className="rounded-xl border border-border bg-card p-3">
-      <p className="text-[11px] text-muted">{label}</p>
-      <p className="font-display text-lg font-semibold text-foreground">{wert}</p>
-    </div>
-  )
-}
-
 export default function Auswertung() {
   const [zeitraum, setZeitraum] = useState<Zeitraum>(30)
   const [daten, setDaten] = useState<BestellungAuswertung | null>(null)
@@ -58,9 +37,6 @@ export default function Auswertung() {
       setDaten(ergebnis)
     })
   }, [zeitraum])
-
-  const maxWochentag = daten ? Math.max(...daten.proWochentag.map((w) => w.anzahl), 1) : 1
-  const maxStunde = daten ? Math.max(...daten.proStunde.map((s) => s.anzahl), 1) : 1
 
   return (
     <div className="space-y-4">
@@ -117,11 +93,7 @@ export default function Auswertung() {
                     <span className="text-xs text-muted">Am meisten los: {daten.meistgefragterWochentag}</span>
                   )}
                 </div>
-                <div className="flex gap-1.5">
-                  {daten.proWochentag.map((w) => (
-                    <Balken key={w.wochentag} label={w.wochentag} anzahl={w.anzahl} max={maxWochentag} />
-                  ))}
-                </div>
+                <BalkenReihe eintraege={daten.proWochentag.map((w) => ({ label: w.wochentag, anzahl: w.anzahl }))} einheit="Bestellungen" />
               </div>
 
               <div className="rounded-2xl border border-border bg-card p-4">
@@ -132,11 +104,10 @@ export default function Auswertung() {
                 {daten.proStunde.length === 0 ? (
                   <p className="text-sm text-muted">Keine Daten.</p>
                 ) : (
-                  <div className="flex gap-1.5 overflow-x-auto">
-                    {daten.proStunde.map((s) => (
-                      <Balken key={s.stunde} label={s.stunde.replace(' Uhr', '')} anzahl={s.anzahl} max={maxStunde} />
-                    ))}
-                  </div>
+                  <StundenHeatmap
+                    eintraege={daten.proStunde.map((s) => ({ label: s.stunde.replace(' Uhr', 'h'), anzahl: s.anzahl }))}
+                    einheit="Bestellungen"
+                  />
                 )}
               </div>
             </>

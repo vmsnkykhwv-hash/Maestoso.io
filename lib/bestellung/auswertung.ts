@@ -10,6 +10,21 @@ function wochentagVon(datum: string): string {
   return WOCHENTAGE[tag]
 }
 
+// Für die Heatmap: lückenlose Stundenleiste von der ersten bis zur letzten
+// vorkommenden Stunde, nicht nur die Stunden mit Bestellungen – sonst sähe
+// eine ruhige Stunde zwischen zwei belebten genauso aus wie "keine Daten
+// vorhanden" statt "null Bestellungen".
+function stundenMitLuecken(stundeMap: Map<string, number>): StundeAuswertung[] {
+  const stunden = [...stundeMap.keys()].map(Number).sort((a, b) => a - b)
+  if (stunden.length === 0) return []
+  const ergebnis: StundeAuswertung[] = []
+  for (let h = stunden[0]; h <= stunden[stunden.length - 1]; h++) {
+    const key = String(h).padStart(2, '0')
+    ergebnis.push({ stunde: `${key} Uhr`, anzahl: stundeMap.get(key) ?? 0 })
+  }
+  return ergebnis
+}
+
 export type BestellungZeile = Pick<Bestellung, 'kanal' | 'status' | 'datum' | 'uhrzeit' | 'gesamtPreis'>
 
 export type WochentagAuswertung = { wochentag: string; anzahl: number; umsatz: number }
@@ -55,9 +70,7 @@ export function berechneBestellAnalyse(bestellungen: BestellungZeile[]): Bestell
   }
 
   const proWochentag = WOCHENTAG_REIHENFOLGE.map((tag) => ({ wochentag: tag, ...wochentagMap.get(tag)! }))
-  const proStunde = [...stundeMap.entries()]
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([stunde, anzahl]) => ({ stunde: `${stunde} Uhr`, anzahl }))
+  const proStunde = stundenMitLuecken(stundeMap)
   const proKanal: KanalAuswertung[] = [...kanalMap.entries()].map(([kanal, werte]) => ({ kanal, ...werte }))
 
   const meistgefragterWochentag = proWochentag.reduce(
