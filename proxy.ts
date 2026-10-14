@@ -26,7 +26,12 @@ export async function proxy(request: NextRequest) {
   // Öffentliche Gäste-Buchungs-/Bestellseiten – kein Login, jede
   // Organisation kann diese Links auf ihrer eigenen Website
   // verlinken/einbetten.
-  if (pathname.startsWith('/reservieren') || pathname.startsWith('/website') || pathname.startsWith('/bestellen')) {
+  if (
+    pathname.startsWith('/reservieren') ||
+    pathname.startsWith('/website') ||
+    pathname.startsWith('/bestellen') ||
+    pathname.startsWith('/veranstaltung/')
+  ) {
     return NextResponse.next()
   }
 

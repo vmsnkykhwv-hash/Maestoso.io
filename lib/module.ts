@@ -3,7 +3,7 @@
 // erweitern) – Dashboard, Sidebar und Plattform-Admin lesen diese Liste,
 // keine Stelle muss doppelt gepflegt werden.
 
-import { Clock, LayoutGrid, CalendarDays, Globe, Boxes, ShoppingBag, Star, Gift, type LucideIcon } from 'lucide-react'
+import { Clock, LayoutGrid, CalendarDays, Globe, Boxes, ShoppingBag, Star, Gift, PartyPopper, type LucideIcon } from 'lucide-react'
 
 export type ModulSchluessel =
   | 'zeiterfassung'
@@ -14,6 +14,7 @@ export type ModulSchluessel =
   | 'bestellung'
   | 'bewertung'
   | 'gutschein'
+  | 'veranstaltung'
 
 export type Modul = {
   schluessel: ModulSchluessel
@@ -88,5 +89,13 @@ export const MODULE: Modul[] = [
     beschreibung: 'Online-Gutscheine verkaufen, optional per PayPal, und beim Besuch per Code einlösen.',
     href: '/dashboard/gutschein',
     icon: Gift,
+  },
+  {
+    schluessel: 'veranstaltung',
+    name: 'Veranstaltungsplanung',
+    kurzname: 'Veranstaltungen',
+    beschreibung: 'Geschlossene Gesellschaften und Raumvermietungen anfragen, bestätigen und verwalten.',
+    href: '/dashboard/veranstaltung',
+    icon: PartyPopper,
   },
 ]

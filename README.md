@@ -396,6 +396,36 @@ echten, unauthentifizierten Aufruf von außen erreicht (beide prüfen sich
 selbst per Signatur, keine Session nötig). API-Routen sind jetzt von der
 Login-Weiterleitung ausgenommen.
 
+## Veranstaltungsplanung
+
+Eigenes Modul (`veranstaltung`), für geschlossene Gesellschaften und
+Raumvermietungen – bewusst kein Tischplan-Tab, weil der Datenbedarf
+(Ansprechpartner, Pauschale/Anzahlung, eigener Status-Workflow, eigenes
+öffentliches Anfrageformular) darüber hinausgeht, siehe Diskussion im
+Chat-Verlauf.
+
+- **Datenmodell**: `lib/veranstaltung/types.ts` + Migration `0021` – Titel,
+  Ansprechpartner (Name/E-Mail/Telefon), Datum, Beginn/Ende, geschätzte
+  Gästezahl, Status (`angefragt` → `bestaetigt`/`abgesagt`/`durchgefuehrt`),
+  optionale Pauschale + Anzahlung, Notiz.
+- **Kapazitätsprüfung ohne eigene Logik**: Eine bestätigte Veranstaltung legt
+  automatisch eine ganz normale Tischplan-Blockierung an (ganzer Betrieb, für
+  den angefragten Zeitraum) – siehe `lib/veranstaltung/aktionen.ts`. Reguläre
+  Reservierungen können sich damit nie mit einer Veranstaltung überschneiden,
+  ohne dass eine zweite, separat zu pflegende Kapazitätsprüfung nötig wäre.
+  Beim Absagen/Löschen wird dieselbe Blockierung wieder entfernt.
+- **Dashboard** (`app/dashboard/veranstaltung/`): Liste mit Status-Aktionen
+  (Bestätigen/Absagen/Als durchgeführt markieren/Löschen), Pauschale/
+  Anzahlung direkt editierbar, manuelles Anlegen durchs Personal (z. B.
+  telefonische Anfrage), Einstellungen (Anfrageformular an/aus, Infotext,
+  Benachrichtigungs-E-Mail).
+- **Öffentliches Anfrageformular** (`app/veranstaltung/[organisationId]`):
+  kein Verfügbarkeits-Check wie bei der Tischreservierung – jede Anfrage
+  landet als "Angefragt" im Dashboard, die Leitung bestätigt manuell (erst
+  dann entsteht die Blockierung). Rate-limited wie die übrigen öffentlichen
+  Formulare (`lib/rateLimit.ts`), schickt eine Eingangsbestätigung an die
+  anfragende Person plus optional eine Benachrichtigung ans Personal.
+
 ## Setup
 
 ### 1. Supabase-Projekt anlegen
@@ -785,6 +815,9 @@ anmelden.
 13. **Kassensystem-Integration** – als generischer Adapter pro Anbieter
     angedacht (analog `lib/paypal/`), hängt davon ab, welches
     Kassensystem die Kunden tatsächlich einsetzen – noch nicht begonnen.
+14. ~~Veranstaltungsplanung~~ – erledigt (siehe "Veranstaltungsplanung"
+    oben): eigenes Modul statt Tischplan-Tab, an die bestehenden
+    Blockierungen angedockt statt eigener Kapazitätsprüfung.
 
 Mit Punkt 11 abgeschlossen ist das Projekt technisch bereit für den
 ersten echten Kunden; rechtlich und betrieblich (siehe Punkt 11) stehen
