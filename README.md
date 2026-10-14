@@ -359,10 +359,42 @@ bedienerfreundlich wirkt, bevor echte Kunden sie sehen.
   nur bei Desktop-Breite sichtbar) – Links auf Anfrage, ändern sich nicht
   bei neuen Chats/Sessions.
 
-**Noch nicht umgesetzt**: Statistiken/Auswertungen (Tischplan-Auslastung,
-Bestellungs-Kennzahlen, Gutschein-Verbindlichkeiten, Bewertungs-Klickrate)
-– besprochen, aber auf Wunsch des Kunden zurückgestellt, bis das Projekt in
-einem eigenen Chat/Projekt weitergeführt wird.
+## Statistiken & Auswertungen
+
+Fünf Auswertungen, jeweils als eigener Tab im passenden Modul (keine neue
+Seite, keine neue Sidebar-Kachel):
+
+1. **Tischplan → "Auswertung"**: Reservierungen nach Wochentag/Uhrzeit,
+   Ø Personen, No-Show- und Stornoquote, Zeitraum wählbar (7/30/90 Tage).
+   `lib/tischplan/auswertung.ts`.
+2. **Bestellung → "Auswertung"**: Umsatz/Anzahl nach Kanal (Abholung/
+   Lieferung), Wochentag und Uhrzeit, Ø Bestellwert, Stornoquote.
+   `lib/bestellung/auswertung.ts`.
+3. **Gutschein → "Verbindlichkeiten"**: offener Betrag (bezahlt, noch nicht
+   eingelöst) vs. bereits eingelöster Betrag, plus Warnliste für Gutscheine,
+   die sich der 3-Jahres-Verjährung nähern (§195 BGB, Warnschwelle 30 Monate
+   nach Bezahlung). `lib/gutschein/auswertung.ts`.
+4. **Bewertung → "Klickrate"**: wie viele Bewertungsanfrage-Mails wurden
+   geöffnet/angeklickt, Zeitraum wählbar. Dafür ein dauerhaftes Protokoll
+   (Tabelle `bewertungsanfragen`, unabhängig von den `bewertung_resend_id`-
+   Spalten auf Reservierung/Bestellung, die beim Stornieren genullt werden)
+   plus ein Resend-Webhook (`app/api/resend/webhook`, Signatur per `svix`
+   geprüft). Ohne `RESEND_WEBHOOK_SECRET` bleibt der Tab leer, nichts
+   anderes wird dadurch beeinträchtigt. `lib/bewertung/auswertung.ts`.
+5. **Bewertung → "Google-Trend"**: Verlauf der Google-Gesamtbewertungen
+   (Anzahl + Durchschnitt) mit Delta zum letzten Eintrag. **Manuell erfasst**
+   – eine echte Anbindung an die Google Business Profile API würde eine
+   eigene Google-Cloud-Projekteinrichtung samt Freigabe durch Google
+   voraussetzen (externer, mehrtägiger Prozess), das lässt sich in dieser
+   Session nicht abschließen. Die Leitung trägt Stand/Durchschnitt stattdessen
+   kurz selbst ein (ein Eintrag pro Tag).
+
+**Dabei gefunden und mitbehoben**: `proxy.ts` hat bislang *jeden* Request
+ohne Login-Cookie auf `/login` umgeleitet, auch unter `/api/*` – damit hätte
+weder der neue Resend-Webhook noch der bestehende PayPal-Webhook je einen
+echten, unauthentifizierten Aufruf von außen erreicht (beide prüfen sich
+selbst per Signatur, keine Session nötig). API-Routen sind jetzt von der
+Login-Weiterleitung ausgenommen.
 
 ## Setup
 
@@ -447,6 +479,10 @@ Mal unter einem Advisory-Lock direkt vor dem Insert laufen lassen (siehe
   Erinnerungsmails im Tischplan-Modul sowie die Bewertungsanfrage. Ohne Key
   wird die Reservierung trotzdem gespeichert bzw. der Status trotzdem
   geändert, nur der jeweilige Mailversand übersprungen.
+- `RESEND_WEBHOOK_SECRET` – optional, nur für die Klickrate im
+  Bewertung-Modul (siehe "Statistiken & Auswertungen"). Signing Secret aus
+  dem bei Resend angelegten Webhook-Endpoint (`<domain>/api/resend/webhook`,
+  Events "email.opened" + "email.clicked").
 - `NEXT_PUBLIC_PLATTFORM_DOMAIN` – eure eigene Plattform-Domain (z. B.
   `partitura.app`), ohne Protokoll/Subdomain. Lokal leer lassen – ohne
   diese Variable ist das Domain-Routing fürs Website-Modul inaktiv.
@@ -742,11 +778,10 @@ anmelden.
     - Einmal komplett mit echten Daten durch alle Module klicken
       (bisher nur per Demo-Artefakt und `npm run build`/`eslint` geprüft,
       nie mit einem echten Supabase-Projekt im Browser).
-12. **Angedacht, noch nicht begonnen**: Statistiken/Auswertungen je Modul
-    (Tischplan-Auslastung nach Tag/Uhrzeit, No-Show-Quote, Bestellungs-
-    Umsatz/Bestseller, Gutschein-Verbindlichkeiten, Bewertungs-Klickrate
-    über Resend) – Ideen besprochen, Priorisierung siehe Chat-Verlauf,
-    Umsetzung bewusst zurückgestellt.
+12. ~~Statistiken/Auswertungen je Modul~~ – erledigt (siehe "Statistiken &
+    Auswertungen" oben): Tischplan-Auslastung, Bestellung-Analyse,
+    Gutschein-Verbindlichkeiten, Bewertungs-Klickrate, Google-Bewertungstrend
+    (Letzterer vorerst manuell erfasst statt per Google-API, siehe dort).
 13. **Kassensystem-Integration** – als generischer Adapter pro Anbieter
     angedacht (analog `lib/paypal/`), hängt davon ab, welches
     Kassensystem die Kunden tatsächlich einsetzen – noch nicht begonnen.
