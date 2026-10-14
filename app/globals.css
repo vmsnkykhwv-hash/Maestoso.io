@@ -1,0 +1,49 @@
+@import "tailwindcss";
+
+/* Partitura – "Konzertsaal": dunkles Tintenblau + Gold auf warmem Creme-Papier.
+   Siehe Markenkonzept-Artefakt für die Herleitung; hier die Tokens fürs echte Projekt. */
+:root {
+  --background: #faf7f0;
+  --foreground: #1b2340;
+  --foreground-soft: #3a4270;
+  --card: #ffffff;
+  --card-dim: #f1ece1;
+  --border: #e4decf;
+  --accent: #c9962b;
+  --accent-foreground: #1b2340;
+  --accent-soft: #f3e3c0;
+  --muted: #6b6456;
+  --success: #2f6f4e;
+  --success-bg: #e3efe8;
+  --locked: #8b6914;
+  --locked-bg: #f3e3c0;
+  --danger: #b3432e;
+  --danger-bg: #f6e3de;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-foreground-soft: var(--foreground-soft);
+  --color-card: var(--card);
+  --color-card-dim: var(--card-dim);
+  --color-border: var(--border);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent-soft: var(--accent-soft);
+  --color-muted: var(--muted);
+  --color-success: var(--success);
+  --color-success-bg: var(--success-bg);
+  --color-locked: var(--locked);
+  --color-locked-bg: var(--locked-bg);
+  --color-danger: var(--danger);
+  --color-danger-bg: var(--danger-bg);
+  --font-sans: var(--font-manrope);
+  --font-display: var(--font-fraunces);
+}
+
+html,
+body {
+  background: var(--background);
+  color: var(--foreground);
+}

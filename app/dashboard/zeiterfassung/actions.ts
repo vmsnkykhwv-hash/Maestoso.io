@@ -1,0 +1,228 @@
+'use server'
+
+import { getServiceClient } from '@/lib/supabase/server'
+import { pinHashErstellen } from '@/lib/pinHash'
+import { ladeMitarbeiter, ladeMitarbeiterListe } from '@/lib/mitarbeiter/daten'
+import { mitarbeiterSitzungOderFehler } from '@/lib/mitarbeiter/session'
+import type { Mitarbeiter, MitarbeiterRolle, MitarbeiterTyp } from '@/lib/mitarbeiter/types'
+import { ladeZeiteintraege } from '@/lib/zeiterfassung/daten'
+import { dokumentHochladen, dokumentLoeschen, ladeDokumenteFuerMitarbeiter } from '@/lib/zeiterfassung/dokumente'
+import type { EintragArt, MitarbeiterDokument, Zeiteintrag } from '@/lib/zeiterfassung/types'
+
+function istGrenzFehler(message: string | undefined): string | undefined {
+  if (message && (message.includes('Wochengrenze') || message.includes('Monatsgrenze'))) {
+    return message
+  }
+  return undefined
+}
+
+export async function zeiteintraegeLadenAktion(mitarbeiterId: string, von: string, bis: string): Promise<Zeiteintrag[]> {
+  const sitzung = await mitarbeiterSitzungOderFehler()
+  if (sitzung.rolle !== 'leitung' && sitzung.mitarbeiterId !== mitarbeiterId) {
+    throw new Error('Keine Berechtigung')
+  }
+  return ladeZeiteintraege(mitarbeiterId, sitzung.organisationId, von, bis)
+}
+
+export async function mitarbeiterListeLadenAktion(): Promise<Mitarbeiter[]> {
+  const sitzung = await mitarbeiterSitzungOderFehler()
+  if (sitzung.rolle !== 'leitung') throw new Error('Keine Berechtigung')
+  return ladeMitarbeiterListe(sitzung.organisationId)
+}
+
+export async function zeiteintragSpeichern(eintrag: {
+  id?: string
+  mitarbeiterId: string
+  arbeitstag: string
+  art: EintragArt
+  beginn: string | null
+  ende: string | null
+  pauseMinuten: number
+  notiz: string | null
+}): Promise<{ fehler?: string; eintrag?: Zeiteintrag }> {
+  const sitzung = await mitarbeiterSitzungOderFehler()
+  if (sitzung.rolle !== 'leitung' && sitzung.mitarbeiterId !== eintrag.mitarbeiterId) {
+    return { fehler: 'Keine Berechtigung' }
+  }
+
+  const supabase = getServiceClient()
+  const zeile = {
+    organisation_id: sitzung.organisationId,
+    mitarbeiter_id: eintrag.mitarbeiterId,
+    arbeitstag: eintrag.arbeitstag,
+    art: eintrag.art,
+    beginn: eintrag.beginn,
+    ende: eintrag.ende,
+    pause_minuten: eintrag.pauseMinuten,
+    notiz: eintrag.notiz,
+  }
+
+  // Bedingtes Update (nur das eigene mitarbeiter_id/organisation_id) statt
+  // eines blinden Updates per id – sonst könnte eine Leitung (oder ein
+  // Mitarbeiter, der versehentlich eine fremde id im Request schickt) einen
+  // Zeiteintrag einer anderen Organisation oder eines anderen Mitarbeiters
+  // überschreiben.
+  const anfrage = eintrag.id
+    ? supabase
+        .from('zeiteintraege')
+        .update(zeile)
+        .eq('id', eintrag.id)
+        .eq('organisation_id', sitzung.organisationId)
+        .eq('mitarbeiter_id', eintrag.mitarbeiterId)
+        .select('id, arbeitstag, art, beginn, ende, pause_minuten, notiz')
+        .maybeSingle()
+    : supabase.from('zeiteintraege').insert(zeile).select('id, arbeitstag, art, beginn, ende, pause_minuten, notiz').single()
+
+  const { data, error } = await anfrage
+
+  if (error || !data) {
+    return { fehler: istGrenzFehler(error?.message) ?? error?.message ?? 'Speichern fehlgeschlagen' }
+  }
+
+  return {
+    eintrag: {
+      id: data.id as string,
+      arbeitstag: data.arbeitstag as string,
+      art: data.art as EintragArt,
+      beginn: data.beginn as string | null,
+      ende: data.ende as string | null,
+      pauseMinuten: data.pause_minuten as number,
+      notiz: data.notiz as string | null,
+    },
+  }
+}
+
+export async function zeiteintragLoeschen(id: string, mitarbeiterId: string): Promise<{ fehler?: string }> {
+  const sitzung = await mitarbeiterSitzungOderFehler()
+  if (sitzung.rolle !== 'leitung' && sitzung.mitarbeiterId !== mitarbeiterId) {
+    return { fehler: 'Keine Berechtigung' }
+  }
+
+  const supabase = getServiceClient()
+  const { data, error } = await supabase
+    .from('zeiteintraege')
+    .delete()
+    .eq('id', id)
+    .eq('organisation_id', sitzung.organisationId)
+    .eq('mitarbeiter_id', mitarbeiterId)
+    .select('id')
+  if (error) return { fehler: error.message }
+  if (!data || data.length === 0) return { fehler: 'Zeiteintrag nicht gefunden' }
+  return {}
+}
+
+export async function mitarbeiterAnlegen(input: {
+  name: string
+  pin: string
+  rolle: MitarbeiterRolle
+  mitarbeiterTyp: MitarbeiterTyp
+  stundenGrenze: number
+}): Promise<{ fehler?: string; mitarbeiter?: Mitarbeiter }> {
+  const sitzung = await mitarbeiterSitzungOderFehler()
+  if (sitzung.rolle !== 'leitung') return { fehler: 'Keine Berechtigung' }
+
+  const supabase = getServiceClient()
+  const pinHash = await pinHashErstellen(input.pin)
+
+  const { data, error } = await supabase
+    .from('mitarbeiter')
+    .insert({
+      organisation_id: sitzung.organisationId,
+      name: input.name.trim(),
+      pin_hash: pinHash,
+      rolle: input.rolle,
+      mitarbeiter_typ: input.mitarbeiterTyp,
+      stunden_grenze: input.stundenGrenze,
+    })
+    .select('id, name, rolle, mitarbeiter_typ, stunden_grenze, aktiv')
+    .single()
+
+  if (error || !data) {
+    const istDuplikat = error?.code === '23505'
+    return { fehler: istDuplikat ? 'Dieser PIN ist in eurer Organisation schon vergeben' : (error?.message ?? 'Anlegen fehlgeschlagen') }
+  }
+
+  return {
+    mitarbeiter: {
+      id: data.id as string,
+      name: data.name as string,
+      rolle: data.rolle as MitarbeiterRolle,
+      mitarbeiterTyp: data.mitarbeiter_typ as MitarbeiterTyp,
+      stundenGrenze: Number(data.stunden_grenze),
+      aktiv: data.aktiv as boolean,
+    },
+  }
+}
+
+export async function mitarbeiterAktualisieren(
+  mitarbeiterId: string,
+  patch: { name?: string; rolle?: MitarbeiterRolle; mitarbeiterTyp?: MitarbeiterTyp; stundenGrenze?: number; aktiv?: boolean }
+): Promise<{ fehler?: string }> {
+  const sitzung = await mitarbeiterSitzungOderFehler()
+  if (sitzung.rolle !== 'leitung') return { fehler: 'Keine Berechtigung' }
+
+  if (mitarbeiterId === sitzung.mitarbeiterId && (patch.aktiv === false || patch.rolle === 'mitarbeiter')) {
+    return { fehler: 'Du kannst dich nicht selbst deaktivieren oder degradieren' }
+  }
+
+  const supabase = getServiceClient()
+  const updateZeile: Record<string, unknown> = {}
+  if (patch.name !== undefined) updateZeile.name = patch.name.trim()
+  if (patch.rolle !== undefined) updateZeile.rolle = patch.rolle
+  if (patch.mitarbeiterTyp !== undefined) updateZeile.mitarbeiter_typ = patch.mitarbeiterTyp
+  if (patch.stundenGrenze !== undefined) updateZeile.stunden_grenze = patch.stundenGrenze
+  if (patch.aktiv !== undefined) updateZeile.aktiv = patch.aktiv
+
+  const { data, error } = await supabase
+    .from('mitarbeiter')
+    .update(updateZeile)
+    .eq('id', mitarbeiterId)
+    .eq('organisation_id', sitzung.organisationId)
+    .select('id')
+  if (error) return { fehler: error.message }
+  if (!data || data.length === 0) return { fehler: 'Mitarbeiter nicht gefunden' }
+  return {}
+}
+
+export async function dokumenteLadenAktion(mitarbeiterId: string): Promise<MitarbeiterDokument[]> {
+  const sitzung = await mitarbeiterSitzungOderFehler()
+  if (sitzung.rolle !== 'leitung') throw new Error('Keine Berechtigung')
+  return ladeDokumenteFuerMitarbeiter(mitarbeiterId, sitzung.organisationId)
+}
+
+export async function dokumentHochladenAktion(
+  mitarbeiterId: string,
+  datei: File
+): Promise<{ fehler?: string; dokument?: MitarbeiterDokument }> {
+  const sitzung = await mitarbeiterSitzungOderFehler()
+  if (sitzung.rolle !== 'leitung') return { fehler: 'Keine Berechtigung' }
+  const mitarbeiter = await ladeMitarbeiter(mitarbeiterId, sitzung.organisationId)
+  if (!mitarbeiter) return { fehler: 'Mitarbeiter nicht gefunden' }
+  return dokumentHochladen(sitzung.organisationId, mitarbeiterId, datei)
+}
+
+export async function dokumentLoeschenAktion(id: string): Promise<{ fehler?: string }> {
+  const sitzung = await mitarbeiterSitzungOderFehler()
+  if (sitzung.rolle !== 'leitung') return { fehler: 'Keine Berechtigung' }
+  return dokumentLoeschen(id, sitzung.organisationId)
+}
+
+export async function mitarbeiterPinZuruecksetzen(mitarbeiterId: string, neuerPin: string): Promise<{ fehler?: string }> {
+  const sitzung = await mitarbeiterSitzungOderFehler()
+  if (sitzung.rolle !== 'leitung') return { fehler: 'Keine Berechtigung' }
+
+  const supabase = getServiceClient()
+  const pinHash = await pinHashErstellen(neuerPin)
+  const { data, error } = await supabase
+    .from('mitarbeiter')
+    .update({ pin_hash: pinHash })
+    .eq('id', mitarbeiterId)
+    .eq('organisation_id', sitzung.organisationId)
+    .select('id')
+  if (error) {
+    const istDuplikat = error.code === '23505'
+    return { fehler: istDuplikat ? 'Dieser PIN ist in eurer Organisation schon vergeben' : error.message }
+  }
+  if (!data || data.length === 0) return { fehler: 'Mitarbeiter nicht gefunden' }
+  return {}
+}
