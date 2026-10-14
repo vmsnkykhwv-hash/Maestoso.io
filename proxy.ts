@@ -30,6 +30,14 @@ export async function proxy(request: NextRequest) {
     return NextResponse.next()
   }
 
+  // API-Routen (PayPal-/Resend-Webhook) prüfen sich selbst per
+  // Signaturprüfung – ohne diese Ausnahme würde ein Request ohne
+  // Login-Cookie (also jeder echte Webhook-Aufruf von außen) hier auf
+  // /login umgeleitet statt den Route-Handler überhaupt zu erreichen.
+  if (pathname.startsWith('/api/')) {
+    return NextResponse.next()
+  }
+
   if (pathname === '/login') {
     if (sitzung) {
       return NextResponse.redirect(

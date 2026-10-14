@@ -18,6 +18,8 @@ import {
   reservierungBewertungAnfrageBeanspruchen,
   reservierungBewertungResendId,
   reservierungBewertungResendIdSetzen,
+  bewertungsanfrageProtokollieren,
+  bewertungsanfrageStorniertMarkieren,
   BEWERTUNG_WIRD_GEPLANT,
 } from './daten'
 import { bewertungsanfrageSenden, bewertungsanfrageStornieren } from './email'
@@ -55,6 +57,7 @@ export async function bewertungsanfragePlanen(organisationId: string, reservieru
   // Statuswechsel es erneut versuchen kann, statt für immer auf dem
   // Platzhalter stehen zu bleiben.
   await reservierungBewertungResendIdSetzen(reservierungId, ergebnis.resendId ?? null)
+  if (ergebnis.resendId) await bewertungsanfrageProtokollieren(organisationId, ergebnis.resendId, 'reservierung', reservierungId)
 }
 
 export async function bewertungsanfrageStornierenFuerReservierung(reservierungId: string): Promise<void> {
@@ -63,7 +66,10 @@ export async function bewertungsanfrageStornierenFuerReservierung(reservierungId
 
   // Platzhalter (Mail wird gerade in einem anderen Request geplant) nie an
   // die Resend-API schicken – nur zurücksetzen.
-  if (resendId !== BEWERTUNG_WIRD_GEPLANT) await bewertungsanfrageStornieren(resendId)
+  if (resendId !== BEWERTUNG_WIRD_GEPLANT) {
+    await bewertungsanfrageStornieren(resendId)
+    await bewertungsanfrageStorniertMarkieren(resendId)
+  }
   await reservierungBewertungResendIdSetzen(reservierungId, null)
 }
 
@@ -95,12 +101,16 @@ export async function bewertungsanfragePlanenFuerBestellung(organisationId: stri
   })
 
   await bestellungBewertungResendIdSetzen(bestellungId, ergebnis.resendId ?? null)
+  if (ergebnis.resendId) await bewertungsanfrageProtokollieren(organisationId, ergebnis.resendId, 'bestellung', bestellungId)
 }
 
 export async function bewertungsanfrageStornierenFuerBestellung(bestellungId: string): Promise<void> {
   const resendId = await bestellungBewertungResendId(bestellungId)
   if (!resendId) return
 
-  if (resendId !== BESTELLUNG_BEWERTUNG_WIRD_GEPLANT) await bewertungsanfrageStornieren(resendId)
+  if (resendId !== BESTELLUNG_BEWERTUNG_WIRD_GEPLANT) {
+    await bewertungsanfrageStornieren(resendId)
+    await bewertungsanfrageStorniertMarkieren(resendId)
+  }
   await bestellungBewertungResendIdSetzen(bestellungId, null)
 }

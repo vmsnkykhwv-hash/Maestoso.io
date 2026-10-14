@@ -4,6 +4,8 @@ import { useState, useTransition } from 'react'
 import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
 import DemoBanner from '@/app/dashboard/DemoBanner'
+import Klickrate from './Klickrate'
+import GoogleTrend from './GoogleTrend'
 import { einstellungenSpeichernAktion } from './actions'
 import type { BewertungsEinstellungen, BewertungsListenEintrag } from '@/lib/bewertung/types'
 import { cn } from '@/lib/utils'
@@ -68,7 +70,7 @@ export default function BewertungApp({
   anfangsEinstellungen: BewertungsEinstellungen
   anfangsUebersicht: BewertungsListenEintrag[]
 }) {
-  const [tab, setTab] = useState<'liste' | 'einstellungen'>('liste')
+  const [tab, setTab] = useState<'liste' | 'klickrate' | 'google' | 'einstellungen'>('liste')
   const [lokal, setLokal] = useState(anfangsEinstellungen)
   const [fehler, setFehler] = useState<string | null>(null)
   const [gespeichert, setGespeichert] = useState(false)
@@ -106,6 +108,20 @@ export default function BewertungApp({
           </button>
           <button
             type="button"
+            onClick={() => setTab('klickrate')}
+            className={cn('rounded-full px-3 py-1.5 text-xs font-medium', tab === 'klickrate' ? 'bg-accent text-accent-foreground' : 'bg-card text-muted')}
+          >
+            Klickrate
+          </button>
+          <button
+            type="button"
+            onClick={() => setTab('google')}
+            className={cn('rounded-full px-3 py-1.5 text-xs font-medium', tab === 'google' ? 'bg-accent text-accent-foreground' : 'bg-card text-muted')}
+          >
+            Google-Trend
+          </button>
+          <button
+            type="button"
             onClick={() => setTab('einstellungen')}
             className={cn(
               'rounded-full px-3 py-1.5 text-xs font-medium',
@@ -116,9 +132,10 @@ export default function BewertungApp({
           </button>
         </div>
 
-        {tab === 'liste' ? (
-          <BewertungsListe eintraege={anfangsUebersicht} einstellungenAktiv={lokal.aktiv} />
-        ) : (
+        {tab === 'liste' && <BewertungsListe eintraege={anfangsUebersicht} einstellungenAktiv={lokal.aktiv} />}
+        {tab === 'klickrate' && <Klickrate />}
+        {tab === 'google' && <GoogleTrend />}
+        {tab === 'einstellungen' && (
           <>
             <p className="mb-4 text-sm text-muted">
               Sobald die Leitung im Tischplan eine Reservierung als &quot;Erschienen&quot; markiert oder eine

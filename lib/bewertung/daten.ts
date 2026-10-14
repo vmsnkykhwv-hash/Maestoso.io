@@ -2,6 +2,7 @@ import { getServiceClient } from '@/lib/supabase/server'
 import { ladeErschieneneReservierungenFuerBewertung } from '@/lib/tischplan/daten'
 import { ladeAbgeschlosseneBestellungenFuerBewertung } from '@/lib/bestellung/daten'
 import type { BewertungsEinstellungen, BewertungsListenEintrag } from './types'
+import type { BewertungsanfrageZeile, GoogleSnapshot } from './auswertung'
 
 const STANDARD_EINSTELLUNGEN: BewertungsEinstellungen = {
   aktiv: false,
@@ -116,4 +117,87 @@ export async function ladeBewertungsUebersicht(organisationId: string): Promise<
   ]
 
   return eintraege.sort((a, b) => (a.datum + a.uhrzeit < b.datum + b.uhrzeit ? 1 : -1))
+}
+
+// Dauerhaftes Protokoll für die Klickrate (lib/bewertung/auswertung.ts) –
+// unabhängig von reservierungen.bewertung_resend_id / bestellungen.bewertung_resend_id,
+// die beim Stornieren wieder auf null gesetzt werden (siehe aktionen.ts) und
+// sich deshalb nicht für eine dauerhafte Auswertung eignen.
+export async function bewertungsanfrageProtokollieren(
+  organisationId: string,
+  resendId: string,
+  quelle: 'reservierung' | 'bestellung',
+  quelleId: string
+): Promise<void> {
+  const supabase = getServiceClient()
+  await supabase.from('bewertungsanfragen').insert({
+    organisation_id: organisationId,
+    resend_id: resendId,
+    quelle,
+    quelle_id: quelleId,
+  })
+}
+
+export async function bewertungsanfrageStorniertMarkieren(resendId: string): Promise<void> {
+  const supabase = getServiceClient()
+  await supabase.from('bewertungsanfragen').update({ storniert: true }).eq('resend_id', resendId)
+}
+
+// Für den Resend-Webhook (app/api/resend/webhook/route.ts) – setzt den
+// Zeitpunkt nur beim ersten Mal (nicht überschreiben, falls Resend ein
+// Event mehrfach zustellt oder ein Gast mehrfach klickt).
+export async function bewertungsanfrageEventSetzen(resendId: string, feld: 'geoeffnet_am' | 'geklickt_am'): Promise<void> {
+  const supabase = getServiceClient()
+  await supabase
+    .from('bewertungsanfragen')
+    .update({ [feld]: new Date().toISOString() })
+    .eq('resend_id', resendId)
+    .is(feld, null)
+}
+
+export async function ladeBewertungsanfragenFuerZeitraum(organisationId: string, von: string, bis: string): Promise<BewertungsanfrageZeile[]> {
+  const supabase = getServiceClient()
+  const { data } = await supabase
+    .from('bewertungsanfragen')
+    .select('storniert, geoeffnet_am, geklickt_am')
+    .eq('organisation_id', organisationId)
+    .gte('erstellt_at', `${von}T00:00:00.000Z`)
+    .lte('erstellt_at', `${bis}T23:59:59.999Z`)
+
+  return (data ?? []).map((z) => ({
+    storniert: z.storniert as boolean,
+    geoeffnetAm: (z.geoeffnet_am as string | null) ?? null,
+    geklicktAm: (z.geklickt_am as string | null) ?? null,
+  }))
+}
+
+export async function googleSnapshotSpeichern(organisationId: string, snapshot: GoogleSnapshot): Promise<{ fehler?: string }> {
+  const supabase = getServiceClient()
+  const { error } = await supabase.from('google_bewertung_snapshots').upsert(
+    {
+      organisation_id: organisationId,
+      datum: snapshot.datum,
+      anzahl_bewertungen: snapshot.anzahlBewertungen,
+      durchschnitt: snapshot.durchschnitt,
+    },
+    { onConflict: 'organisation_id,datum' }
+  )
+  if (error) return { fehler: error.message }
+  return {}
+}
+
+export async function ladeGoogleSnapshots(organisationId: string, limit = 24): Promise<GoogleSnapshot[]> {
+  const supabase = getServiceClient()
+  const { data } = await supabase
+    .from('google_bewertung_snapshots')
+    .select('datum, anzahl_bewertungen, durchschnitt')
+    .eq('organisation_id', organisationId)
+    .order('datum', { ascending: false })
+    .limit(limit)
+
+  return (data ?? []).map((z) => ({
+    datum: z.datum as string,
+    anzahlBewertungen: z.anzahl_bewertungen as number,
+    durchschnitt: Number(z.durchschnitt),
+  }))
 }
