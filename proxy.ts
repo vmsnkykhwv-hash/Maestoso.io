@@ -30,6 +30,7 @@ export async function proxy(request: NextRequest) {
     pathname.startsWith('/reservieren') ||
     pathname.startsWith('/website') ||
     pathname.startsWith('/bestellen') ||
+    pathname.startsWith('/gutschein/') ||
     pathname.startsWith('/veranstaltung/')
   ) {
     return NextResponse.next()
