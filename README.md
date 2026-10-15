@@ -426,6 +426,65 @@ Chat-Verlauf.
   Formulare (`lib/rateLimit.ts`), schickt eine Eingangsbestätigung an die
   anfragende Person plus optional eine Benachrichtigung ans Personal.
 
+## Preismodell
+
+Noch nicht im Code abgebildet (keine Abrechnungslogik, keine Preisseite) –
+hier nur die Entscheidung aus den Preisgesprächen festgehalten, damit sie
+nicht wieder neu verhandelt werden muss, wenn Abrechnung/Preisseite gebaut
+werden.
+
+**Ausgangslage:** Ziel ist Profitabilität schon ab 3–5 Kunden, nicht erst
+ab Dutzenden. Laufende Infrastrukturkosten liegen bei ca. 42–60 €/Monat
+(Supabase Pro ~23 €, Vercel Pro ~18 € – Hobby-Tier ist nur für private
+Nutzung zulässig, Resend bis 3.000 Mails/Monat kostenlos, danach ~18 €).
+Ein vergleichbarer Funktionsumfang bei der Konkurrenz (z. B. gastronovi:
+Tischreservierung + Bestellsystem + Kasse + Kassenbuch + Kalkulation +
+Einkauf einzeln lizenziert) kostet in Summe grob 250–350 €/Monat.
+
+### Drei Stufen
+
+| | Basic | Plus | Full |
+|---|---|---|---|
+| **Preis** | 49 €/Monat | 109 €/Monat | 149 €/Monat |
+| Zeiterfassung | ✓ | ✓ | ✓ |
+| Tischplan & Reservierungen | ✓ | ✓ | ✓ |
+| Website | ✓ | ✓ | ✓ |
+| Dienstplan | | ✓ | ✓ |
+| Online-Bestellung | | ✓ | ✓ |
+| Google-Bewertungsanfrage | | ✓ | ✓ |
+| Lagerbestand | | | ✓ |
+| Gutschein-Verkauf | | | ✓ |
+| Veranstaltungsplanung | | | ✓ |
+
+Erzählstruktur der Staffelung: Basic = online sichtbar + buchbar, Plus =
+aktiv Umsatz machen + Personal koordinieren, Full = komplettes Backoffice
+inkl. Sonderanlässe. Jede Stufe baut auf der vorigen auf, kein Modul taucht
+isoliert in einer höheren Stufe auf, ohne in der vorigen enthalten zu sein.
+
+### Einzelpreise (Module einzeln buchbar, für Kunden ohne Bundle)
+
+Zeiterfassung 19 € · Tischplan 35 € · Website 16 € · Dienstplan 22 € ·
+**Online-Bestellung 59 €** · Bewertungsanfrage 16 € · Lagerbestand 25 € ·
+Gutschein-Verkauf 19 € · Veranstaltungsplanung 32 €
+
+Summe aller neun Module einzeln: 243 € – bewusst über dem Full-Preis
+(149 €), damit das Bundle immer der günstigere Weg bleibt (ca. 30–40 %
+Bundle-Rabatt), aber weiterhin klar unter der Konkurrenz-Summe von
+250–350 €.
+
+### Online-Bestellung ist bewusst der Ausreißer nach oben
+
+59 € liegt über dem, was einzelne Wettbewerber für ein reines
+Bestellmodul verlangen (gastronovi: 49 €/Monat) – hier zählt aber nicht
+der Vergleich mit anderer Software, sondern mit Lieferando: 13–30 %
+Provision pro Bestellung, bei mittlerem Umsatz schnell 300–600 €/Monat.
+Eine Flatrate wirkt dagegen selbst bei höherem Preis wie ein Schnäppchen.
+Deshalb bewusst **in Plus belassen, nicht nach Full verschoben** – das
+Modul ist der stärkste Türöffner im Verkaufsgespräch (konkrete
+Ersparnis vorrechenbar), ein Kunde, der nur Online-Bestellung ohne
+Provision will, soll nicht zur Konkurrenz abwandern, nur weil das Modul
+hinter der teuersten Stufe versteckt ist.
+
 ## Setup
 
 ### 1. Supabase-Projekt anlegen
