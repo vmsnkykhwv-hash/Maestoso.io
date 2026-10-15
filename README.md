@@ -758,6 +758,17 @@ Resend-Konfiguration erscheint der Einladungslink zum Kopieren. Lokal (ohne
   (`oeffentlicheUrl` in `lib/url.ts`), der PayPal-Webhook bewusst die
   Plattform-Domain.
 
+### 5. Prüfungen & Browser-Tests
+
+- `npx eslint .`, `npm run typecheck`, `npm run build` – laufen auch bei
+  jedem Push auf GitHub (`.github/workflows/pruefung.yml`).
+- `npm run e2e` – startet per Docker eine eigene Testdatenbank (Postgres +
+  PostgREST, `e2e/docker-compose.yml`), spielt alle Migrationen ein, baut
+  die App mit Testumgebung und klickt im Browser durch Anmeldung, 2FA,
+  Einladung, Tresen, Handy-Kopplung, Rechte und Änderungsprotokoll
+  (`e2e/*.e2e.mts`). Braucht Docker und Chromium (`npx playwright install
+  chromium` oder `CHROMIUM_PATH`). Echte Daten werden nie berührt.
+
 ## Aufbau
 
 - `app/login` – zentrales Login, zwei Tabs (Organisation / Plattform-Admin).

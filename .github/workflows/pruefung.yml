@@ -1,0 +1,49 @@
+# Läuft bei jedem Push und Pull Request: ein roter Haken heißt "nicht
+# deployen". Vercel baut zwar selbst, prüft aber weder eslint noch die
+# Browser-Tests.
+name: Prüfung
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+jobs:
+  pruefen:
+    name: Lint, Typen, Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+        env:
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
+      - run: npx eslint .
+      - run: npm run typecheck
+      - run: npm run build
+
+  browser-tests:
+    name: Browser-Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run e2e
+      - name: Logs bei Fehler aufheben
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-logs
+          path: |
+            e2e/*.log
+            e2e/fehler.png
+          if-no-files-found: ignore

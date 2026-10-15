@@ -4,3 +4,7 @@ node_modules/
 .env
 next-env.d.ts
 *.tsbuildinfo
+
+# Browser-Tests
+/e2e/*.log
+/e2e/fehler.png

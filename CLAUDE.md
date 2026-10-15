@@ -41,6 +41,7 @@ Die vollständige Datei-Karte steht in `README.md` → "Aufbau". Kurzfassung:
 | Sicherheits-Mails bei Änderungen an Zugängen | `lib/konten/sicherheitshinweis.ts` |
 | Jedes Modul | `app/dashboard/<modul>/` (UI) + `lib/<modul>/` (Logik, DB-Zugriff) |
 | DB-Schema | `supabase/migrations/` (nummeriert, nacheinander anwenden) |
+| Browser-Tests (`npm run e2e`, Docker) / GitHub-Prüfung | `e2e/`, `.github/workflows/pruefung.yml` |
 | Preismodell | `README.md` → "Preismodell" |
 | Sicherheits-Audit (was schon geprüft/behoben wurde) | `README.md` → "Sicherheits-Audit vor dem Livegang" |
 | Was vor dem Live-Betrieb noch fehlt | `README.md` → "Nächste Schritte" |
@@ -100,7 +101,8 @@ Nicht wiederholen:
 ## Arbeitsweise
 
 - Vor "fertig" immer `npm run build` und `npx eslint .` – beides muss
-  sauber durchlaufen.
+  sauber durchlaufen. Bei Änderungen an Anmeldung, Rechten, Geräten oder
+  Protokoll zusätzlich `npm run e2e`.
 - Kommentare erklären das *Warum*, nicht das *Was*.
 - Texte in der App sind deutsch und geduzt.
 - Nach abgeschlossenen Schritten committen und auf `origin/master`
