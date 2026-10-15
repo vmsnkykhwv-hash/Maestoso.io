@@ -10,8 +10,8 @@ Eine Multi-Tenant-SaaS-Plattform für kleine Gastronomiebetriebe
 Online-Bestellung, Gutscheinverkauf, Bewertungsanfragen, Veranstaltungs-
 planung). Produktname **Maestoso** (intern vorher "Partitura" –
 verworfen wegen durchgehend besetzter Domains, siehe README →
-"Aktueller Stand"). Zielname der Domain: `maestoso.io` (noch nicht
-registriert).
+"Aktueller Stand"). Plattform-Domain: `maestoso-gastro.de` (registriert,
+dazu `maestosogastro.de` als Weiterleitung).
 
 ## Eigenständiges Projekt – strikt getrennt halten
 

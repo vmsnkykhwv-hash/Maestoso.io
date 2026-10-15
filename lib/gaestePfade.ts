@@ -51,7 +51,7 @@ export function internerPfad(organisationId: string, oeffentlich: string): strin
   return `/website/${organisationId}`
 }
 
-// Alte Plattform-Adressen (maestoso.io/reservieren/<id> usw.), die auf die
+// Alte Plattform-Adressen (maestoso-gastro.de/reservieren/<id> usw.), die auf die
 // Domain des Betriebs umgeleitet werden.
 export function altePlattformAdresse(pathname: string): string | null {
   const teile = pathname.split('/').filter(Boolean)

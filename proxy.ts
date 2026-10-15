@@ -11,7 +11,7 @@ import {
 import { ladeHostOrganisationPerId, ladeOrganisationFuerHost, oeffentlicherHost } from '@/lib/organisationen'
 
 // Zwei Arten von Adressen:
-// - Plattform-Domain (maestoso.io): Plattform-Admin (/login, /plattform-admin),
+// - Plattform-Domain (maestoso-gastro.de): Plattform-Admin (/login, /plattform-admin),
 //   Impressum/Datenschutz der Plattform, Webhooks.
 // - Domain eines Betriebs (Subdomain oder eigene Domain): Gästeseiten unter
 //   kurzen Pfaden, Team-Anmeldung unter /team, Dashboard unter /dashboard.
@@ -58,7 +58,7 @@ export async function proxy(request: NextRequest) {
     }
     // Unbekannter Host (z. B. eine Vercel-Vorschau-URL): wie die Plattform behandeln.
   } else if (plattformDomain && umleitbar) {
-    // Alte bzw. interne Adressen (maestoso.io/reservieren/<id>, /team/<id> …)
+    // Alte bzw. interne Adressen (maestoso-gastro.de/reservieren/<id>, /team/<id> …)
     // auf die Domain des Betriebs umleiten – dort gelten Sitzungen und
     // Gäste sehen nur dessen Adresse.
     const organisationId = altePlattformAdresse(pathname)

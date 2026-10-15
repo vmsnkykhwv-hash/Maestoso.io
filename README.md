@@ -13,8 +13,10 @@ Projekt umgesetzt (Design-Tokens in `app/globals.css`, Sidebar-Navigation
 in `components/Sidebar.tsx`/`DashboardShell.tsx`). Der Name "Maestoso"
 (vorher "Partitura" – verworfen, weil .de/.com/.app/.io durchgehend
 besetzt waren) ist markenrechtlich geprüft (EUIPO + DPMA, Klassen 09/42:
-keine aktive Marke in Software-relevanten Klassen) und die Domain
-`maestoso.io` ist frei.
+keine aktive Marke in Software-relevanten Klassen). Plattform-Domain:
+`maestoso-gastro.de`, bei INWX registriert, dazu `maestosogastro.de` als
+Weiterleitung für Tippfehler ohne Bindestrich. `maestoso.de` gehört einem
+Domainhändler, `maestoso.io` hätte ein Vielfaches gekostet.
 
 ## Zugänge & Rollen
 
@@ -419,7 +421,7 @@ bedienerfreundlich wirkt, bevor echte Kunden sie sehen.
   Tempobezeichnung) – bleibt in der Dirigenten-/Orchester-Metapher, die
   schon mit "Partitura" begonnen hat. Markenrechtlich geprüft (EUIPO +
   DPMA, Klassen 09/42: keine aktive Marke in Software-relevanten
-  Klassen) und Domain `maestoso.io` gesichert – Status: abgeschlossen.
+  Klassen) und Domain `maestoso-gastro.de` registriert – Status: abgeschlossen.
 - **Farben/Typografie**: Palette "Konzertsaal" (dunkles Tintenblau `#1b2340`,
   Gold `#c9962b`, warmes Creme-Papier `#faf7f0`) in `app/globals.css` als
   CSS-Variablen, Schriften Fraunces (Überschriften) + Manrope (Fließtext)
@@ -700,7 +702,7 @@ Tool-Freischaltung je Mitarbeiter*in, `0026` das
   dem bei Resend angelegten Webhook-Endpoint (`<domain>/api/resend/webhook`,
   Events "email.opened" + "email.clicked").
 - `NEXT_PUBLIC_PLATTFORM_DOMAIN` – eure eigene Plattform-Domain (z. B.
-  `maestoso.io`), ohne Protokoll/Subdomain. Lokal leer lassen – ohne
+  `maestoso-gastro.de`), ohne Protokoll/Subdomain. Lokal leer lassen – ohne
   diese Variable ist das Domain-Routing fürs Website-Modul inaktiv.
 - `VERCEL_API_TOKEN` / `VERCEL_PROJECT_ID` / `VERCEL_TEAM_ID` – optional,
   damit der Plattform-Admin Kunden-Domains direkt aus Maestoso im
@@ -730,8 +732,10 @@ Resend-Konfiguration erscheint der Einladungslink zum Kopieren. Lokal (ohne
 - Eigenes Vercel-Projekt für dieses Repo anlegen.
 - Die Umgebungsvariablen oben in den Vercel-Projekteinstellungen eintragen
   (Production + Preview).
-- Eigene Domain + Wildcard-Subdomain im Vercel-Projekt hinzufügen (z. B.
-  `maestoso.io` und `*.maestoso.io`), damit jede
+- Eigene Domain + Wildcard-Subdomain im Vercel-Projekt hinzufügen
+  (`maestoso-gastro.de` und `*.maestoso-gastro.de`, Nameserver bei INWX auf
+  Vercel umstellen – nur so bekommt die Wildcard ein Zertifikat), dazu
+  `maestosogastro.de` als Weiterleitung auf `maestoso-gastro.de`, damit jede
   Organisations-Subdomain automatisch funktioniert, sobald
   `NEXT_PUBLIC_PLATTFORM_DOMAIN` gesetzt ist.
 - Eigene Kunden-Domain (z. B. `musterbetrieb.de`): nur im Plattform-Admin
@@ -749,7 +753,7 @@ Resend-Konfiguration erscheint der Einladungslink zum Kopieren. Lokal (ohne
   `/bestellen`, `/gutschein`, `/gutschein/erfolg`, `/veranstaltung`,
   `/impressum`, `/datenschutz` (Zuordnung in `lib/gaestePfade.ts`, gemeinsam
   für `proxy.ts` und alle Links). Alte Adressen
-  `maestoso.io/reservieren/<id>` usw. leiten dorthin um.
+  `maestoso-gastro.de/reservieren/<id>` usw. leiten dorthin um.
 - Subdomain verstecken: Sobald „Status prüfen“ die eigene Domain als fertig
   meldet (`custom_domain_aktiv`, Migration `0023`), leitet die Subdomain
   dauerhaft (308) auf die eigene Domain um. Bricht die DNS später weg,
@@ -1028,8 +1032,8 @@ Resend-Konfiguration erscheint der Einladungslink zum Kopieren. Lokal (ohne
       `lib/rechtliches/plattform.ts` füllen, anwaltliche Prüfung der Texte,
       Auftragsverarbeitungsvertrag (AVV) mit jeder Organisation.
     - ~~Domain-/Markenprüfung~~ – erledigt, Name auf "Maestoso" geändert
-      (siehe "Aktueller Stand" oben), Domain `maestoso.io` tatsächlich
-      registrieren, sobald es an den Live-Betrieb geht.
+      (siehe "Aktueller Stand" oben), Domain `maestoso-gastro.de` (plus
+      `maestosogastro.de`) registriert.
     - Produktivumgebung einrichten (echtes Supabase-Projekt, echte
       Umgebungsvariablen, Resend-Absende-Domain verifizieren, PayPal auf
       Live-Modus je Organisation umstellen) – siehe "Setup" oben.
