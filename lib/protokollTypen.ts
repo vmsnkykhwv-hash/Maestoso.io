@@ -11,6 +11,7 @@ export type ProtokollModul =
   | 'bewertung'
   | 'rechtliches'
   | 'zugaenge'
+  | 'plattform'
 
 export const PROTOKOLL_MODUL_LABEL: Record<ProtokollModul, string> = {
   tischplan: 'Tischplan',
@@ -24,12 +25,13 @@ export const PROTOKOLL_MODUL_LABEL: Record<ProtokollModul, string> = {
   bewertung: 'Bewertung',
   rechtliches: 'Impressum & Datenschutz',
   zugaenge: 'Zugänge & Geräte',
+  plattform: 'Freischaltung & Domain',
 }
 
 export type ProtokollEintrag = {
   id: string
   zeitpunkt: string
-  akteurArt: 'inhaber' | 'tresen' | 'handy'
+  akteurArt: 'inhaber' | 'tresen' | 'handy' | 'support'
   akteurName: string
   modul: ProtokollModul
   aktion: string

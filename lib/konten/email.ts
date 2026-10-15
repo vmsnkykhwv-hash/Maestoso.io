@@ -47,3 +47,12 @@ export async function passwortLinkSenden(an: string, betrieb: string, link: stri
     `<p>Hallo,</p><p>du hast ein neues Passwort für dein Maestoso-Konto bei <strong>${escapeHtml(betrieb)}</strong> angefordert.</p>${knopf(link, 'Neues Passwort festlegen')}<p>Der Link ist eine Stunde gültig. Wenn du das nicht warst, ignoriere diese Mail – dein Passwort bleibt unverändert.</p>`
   )
 }
+
+export async function sicherheitshinweisSenden(an: string, betrieb: string, ereignis: string, wer: string, link: string): Promise<boolean> {
+  const zeit = new Date().toLocaleString('de-DE', { timeZone: 'Europe/Berlin', dateStyle: 'medium', timeStyle: 'short' })
+  return senden(
+    an,
+    `Sicherheitshinweis: Änderung an den Zugängen von ${betrieb}`,
+    `<p>Hallo,</p><p>bei <strong>${escapeHtml(betrieb)}</strong> wurde gerade etwas an den Zugängen geändert:</p><p><strong>${escapeHtml(ereignis)}</strong><br>durch ${escapeHtml(wer)} am ${escapeHtml(zeit)} Uhr</p><p>War das abgesprochen, musst du nichts tun. Wenn nicht: melde dich an, prüfe unter „Zugänge &amp; Geräte“ und im Änderungsprotokoll, sperre unbekannte Konten und gib uns sofort Bescheid.</p>${knopf(link, 'Zu Maestoso')}`
+  )
+}

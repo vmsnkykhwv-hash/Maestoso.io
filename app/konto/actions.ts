@@ -1,6 +1,7 @@
 'use server'
 
 import { sitzungStarten } from '@/lib/konten/anmeldung'
+import { passwortAenderungMelden } from '@/lib/konten/sicherheitshinweis'
 import { ladeKonto, passwortSetzen, sitzungenBeenden, totpSchrittMerken, wiederherstellungscodesSetzen, type Konto } from '@/lib/konten/daten'
 import { passwortFehler, passwortHashErstellen, passwortPruefen } from '@/lib/konten/passwort'
 import { codePruefen } from '@/lib/konten/totp'
@@ -42,6 +43,7 @@ export async function passwortAendernAktion(altesPasswort: string, neuesPasswort
 
   await rateLimitZuruecksetzen(sperrschluessel)
   await passwortSetzen(konto, await passwortHashErstellen(neuesPasswort))
+  await passwortAenderungMelden(konto)
   // Alle anderen Geräte sind jetzt abgemeldet, dieses bleibt angemeldet.
   await sitzungStarten({ ...konto, sitzungVersion: konto.sitzungVersion + 1 })
   return {}

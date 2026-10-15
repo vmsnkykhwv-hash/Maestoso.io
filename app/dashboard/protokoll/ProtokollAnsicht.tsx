@@ -1,13 +1,13 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { MonitorSmartphone, Smartphone, UserRound } from 'lucide-react'
+import { LifeBuoy, MonitorSmartphone, Smartphone, UserRound } from 'lucide-react'
 import { PROTOKOLL_MODUL_LABEL, type ProtokollEintrag, type ProtokollModul } from '@/lib/protokollTypen'
 import { protokollLadenAktion } from './actions'
 
 const SEITENGROESSE = 100
 
-const AKTEUR_ICON = { inhaber: UserRound, tresen: MonitorSmartphone, handy: Smartphone } as const
+const AKTEUR_ICON = { inhaber: UserRound, tresen: MonitorSmartphone, handy: Smartphone, support: LifeBuoy } as const
 
 function zeitpunkt(iso: string): string {
   return new Date(iso).toLocaleString('de-DE', {
@@ -48,8 +48,8 @@ export default function ProtokollAnsicht({ anfangsEintraege }: { anfangsEintraeg
   return (
     <div className="space-y-4">
       <p className="text-sm text-muted">
-        Wer hat wann was geändert – Verwaltungskonten, Mitarbeitende am Tresen (per PIN) und gekoppelte Handys. Einträge
-        lassen sich nicht bearbeiten oder löschen.
+        Wer hat wann was geändert – Verwaltungskonten, Mitarbeitende am Tresen (per PIN), gekoppelte Handys und
+        Eingriffe durch den Maestoso-Support. Einträge lassen sich nicht bearbeiten oder löschen.
       </p>
       <select
         value={modul}

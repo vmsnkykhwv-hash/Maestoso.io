@@ -1,5 +1,5 @@
 import { ladeKonto } from '@/lib/konten/daten'
-import { getBetriebsSitzung } from '@/lib/session'
+import { getBetriebsSitzung, getSitzung } from '@/lib/session'
 import { getServiceClient } from '@/lib/supabase/server'
 
 import type { ProtokollEintrag, ProtokollModul } from '@/lib/protokollTypen'
@@ -34,6 +34,38 @@ export async function protokollieren(modul: ProtokollModul, aktion: string, deta
         akteur_art: akteur.art,
         akteur_id: akteur.id,
         akteur_name: akteur.name,
+        modul,
+        aktion,
+        details: details ?? null,
+        objekt_id: objektId ?? null,
+      })
+    if (error) console.error('Änderungsprotokoll:', error.message)
+  } catch (e) {
+    console.error('Änderungsprotokoll:', e)
+  }
+}
+
+// Eingriffe des Plattform-Admins in einen Betrieb. Der Admin hat keine
+// Betriebssitzung, deshalb kommt der Betrieb als Parameter – geschrieben
+// wird nur, wenn wirklich ein Admin angemeldet ist.
+export async function supportProtokollieren(
+  organisationId: string,
+  modul: ProtokollModul,
+  aktion: string,
+  details?: string | null,
+  objektId?: string | null
+) {
+  try {
+    const sitzung = await getSitzung()
+    if (sitzung?.typ !== 'plattform-admin') return
+    const konto = await ladeKonto('admin', sitzung.kontoId)
+    const { error } = await getServiceClient()
+      .from('aenderungsprotokoll')
+      .insert({
+        organisation_id: organisationId,
+        akteur_art: 'support',
+        akteur_id: sitzung.kontoId,
+        akteur_name: `Maestoso-Support (${konto?.email ?? 'Admin'})`,
         modul,
         aktion,
         details: details ?? null,

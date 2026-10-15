@@ -1,6 +1,7 @@
 'use server'
 
 import { pruefePlattformAdminPin } from '@/lib/auth'
+import { passwortAenderungMelden } from '@/lib/konten/sicherheitshinweis'
 import { adminAnlegen, adminVorhanden, benutzerNameSetzen, ladeKontoPerEmail, passwortSetzen } from '@/lib/konten/daten'
 import {
   anmeldungAbbrechen,
@@ -96,6 +97,7 @@ export async function passwortFestlegenAktion(
 
   await passwortSetzen(gefunden.konto, await passwortHashErstellen(passwort))
   if (zweck === 'einladung' && name?.trim()) await benutzerNameSetzen(gefunden.konto.id, name)
+  if (zweck === 'passwort') await passwortAenderungMelden(gefunden.konto)
   await nachPasswort({ ...gefunden.konto, sitzungVersion: gefunden.konto.sitzungVersion + 1 })
   return {}
 }

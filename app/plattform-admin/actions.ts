@@ -8,6 +8,8 @@ import { getSitzung } from '@/lib/session'
 import { getServiceClient } from '@/lib/supabase/server'
 import { MODULE, type ModulSchluessel } from '@/lib/module'
 import { subdomainVorschlagen, type OrganisationMitFreischaltungen } from '@/lib/organisationen'
+import { supportProtokollieren } from '@/lib/protokoll'
+import { verwaltungBenachrichtigen } from '@/lib/konten/sicherheitshinweis'
 import { domainEntfernen, domainHinzufuegen, domainStatusLaden, vercelKonfiguriert, type DomainStatus } from '@/lib/vercel/domains'
 
 // Server Actions sind eigenständig aufrufbare Endpunkte (über die
@@ -20,6 +22,11 @@ async function plattformAdminOderFehler() {
   if (!sitzung || sitzung.typ !== 'plattform-admin') throw new Error('Keine Berechtigung')
   return sitzung
 }
+
+// Jeder Eingriff in einen Betrieb steht in dessen Änderungsprotokoll, und
+// alles, was Zugänge oder die Login-Adresse betrifft, geht zusätzlich per
+// Mail an die Verwaltungskonten – der Admin soll nichts unbemerkt tun können.
+const SUPPORT = 'den Maestoso-Support'
 
 // Gibt Fehler als Wert zurück statt zu werfen: geworfene Fehlermeldungen
 // aus Server Actions ersetzt Next.js im Produktivbetrieb durch einen
@@ -67,6 +74,7 @@ export async function organisationAnlegen(
   }
 
   const einladung = await einladungVerschicken(data.id as string, inhaber.benutzerId, inhaberEmail)
+  await supportProtokollieren(data.id as string, 'zugaenge', 'Betrieb angelegt, Inhaber*in eingeladen', inhaberEmail, inhaber.benutzerId)
   revalidatePath('/plattform-admin')
 
   const organisation: OrganisationMitFreischaltungen = {
@@ -147,6 +155,8 @@ export async function domainVerbindenAktion(
   if (error) {
     return { fehler: error.code === '23505' ? 'Diese Domain ist schon einer anderen Organisation zugeordnet.' : error.message }
   }
+  await supportProtokollieren(organisationId, 'plattform', 'Domain verbunden', domain)
+  await verwaltungBenachrichtigen(organisationId, `Eigene Domain auf ${domain} gesetzt`, SUPPORT)
   revalidatePath('/plattform-admin')
   return { domain, hinweis }
 }
@@ -156,9 +166,10 @@ export async function domainStatusAktion(organisationId: string): Promise<{ fehl
   if (!vercelKonfiguriert()) return { fehler: 'Vercel ist nicht eingerichtet (siehe README → Setup).' }
 
   const supabase = getServiceClient()
-  const { data } = await supabase.from('organisationen').select('custom_domain').eq('id', organisationId).maybeSingle()
+  const { data } = await supabase.from('organisationen').select('custom_domain, custom_domain_aktiv').eq('id', organisationId).maybeSingle()
   const domain = data?.custom_domain as string | null | undefined
   if (!domain) return { fehler: 'Keine eigene Domain hinterlegt.' }
+  const bisherAktiv = data?.custom_domain_aktiv === true
 
   const ergebnis = await domainStatusLaden(domain)
   if (ergebnis.status) {
@@ -167,6 +178,9 @@ export async function domainStatusAktion(organisationId: string): Promise<{ fehl
     // schaltet die nächste Prüfung die Umleitung wieder ab.
     const aktiv = ergebnis.status.verifiziert && ergebnis.status.dnsKorrekt
     await supabase.from('organisationen').update({ custom_domain_aktiv: aktiv }).eq('id', organisationId)
+    if (aktiv !== bisherAktiv) {
+      await supportProtokollieren(organisationId, 'plattform', aktiv ? 'Domain aktiv geschaltet' : 'Domain deaktiviert (nicht erreichbar)', domain)
+    }
   }
   return ergebnis
 }
@@ -187,6 +201,10 @@ export async function domainEntfernenAktion(organisationId: string): Promise<{ f
     .update({ custom_domain: null, custom_domain_aktiv: false })
     .eq('id', organisationId)
   if (error) return { fehler: error.message }
+  if (domain) {
+    await supportProtokollieren(organisationId, 'plattform', 'Domain entfernt', domain)
+    await verwaltungBenachrichtigen(organisationId, `Eigene Domain ${domain} entfernt`, SUPPORT)
+  }
   revalidatePath('/plattform-admin')
   return {}
 }
@@ -206,6 +224,8 @@ export async function modulFreischaltenUmschalten(
     .eq('modul', modul)
 
   if (error) throw new Error(error.message)
+  const label = MODULE.find((m) => m.schluessel === modul)?.name ?? modul
+  await supportProtokollieren(organisationId, 'plattform', freigeschaltet ? 'Modul freigeschaltet' : 'Modul auf Demo gesetzt', label)
   revalidatePath('/plattform-admin')
 }
 
@@ -239,6 +259,8 @@ export async function inhaberEinladenAktion(
   const angelegt = await benutzerAnlegen(organisationId, email, name)
   if (!angelegt.benutzerId) return { fehler: angelegt.fehler }
   const einladung = await einladungVerschicken(organisationId, angelegt.benutzerId, email)
+  await supportProtokollieren(organisationId, 'zugaenge', 'Verwaltungskonto eingeladen', email, angelegt.benutzerId)
+  await verwaltungBenachrichtigen(organisationId, `Neues Verwaltungskonto eingeladen: ${name.trim() || email}`, SUPPORT, [angelegt.benutzerId])
   return { ...einladung, benutzer: await ladeBenutzerDerOrganisation(organisationId) }
 }
 
@@ -256,7 +278,10 @@ export async function einladungErneuernAktion(
   const konto = await benutzerDerOrganisation(organisationId, benutzerId)
   if (!konto) return { fehler: 'Konto nicht gefunden.' }
   if (konto.passwortHash) return { fehler: 'Das Konto ist schon eingerichtet – für ein vergessenes Passwort gibt es "Passwort vergessen".' }
-  return einladungVerschicken(organisationId, benutzerId, konto.email)
+  const ergebnis = await einladungVerschicken(organisationId, benutzerId, konto.email)
+  await supportProtokollieren(organisationId, 'zugaenge', 'Einladung erneuert', konto.email, benutzerId)
+  await verwaltungBenachrichtigen(organisationId, `Einladung für ${konto.email} erneuert`, SUPPORT, [benutzerId])
+  return ergebnis
 }
 
 // Handy mit Authenticator-App und Wiederherstellungscodes verloren: 2FA
@@ -269,6 +294,9 @@ export async function zweiFaktorZuruecksetzenAktion(organisationId: string, benu
   const konto = await benutzerDerOrganisation(organisationId, benutzerId)
   if (!konto) return { fehler: 'Konto nicht gefunden.' }
   await totpZuruecksetzen(konto)
+  await supportProtokollieren(organisationId, 'zugaenge', '2FA zurückgesetzt', konto.email, benutzerId)
+  // Auch an die betroffene Person: sie muss beim nächsten Login die App neu einrichten.
+  await verwaltungBenachrichtigen(organisationId, `2FA von ${konto.email} zurückgesetzt – alle Sitzungen beendet`, SUPPORT)
   return { benutzer: await ladeBenutzerDerOrganisation(organisationId) }
 }
 
@@ -284,5 +312,7 @@ export async function benutzerAktivSetzenAktion(
   const { error } = await supabase.from('benutzer').update({ aktiv }).eq('id', benutzerId).eq('organisation_id', organisationId)
   if (error) return { fehler: error.message }
   if (!aktiv) await sitzungenBeenden(konto)
+  await supportProtokollieren(organisationId, 'zugaenge', 'Verwaltungskonto gesperrt/entsperrt', `${konto.email}: ${aktiv ? 'entsperrt' : 'gesperrt'}`, benutzerId)
+  await verwaltungBenachrichtigen(organisationId, `Verwaltungskonto ${konto.email} ${aktiv ? 'entsperrt' : 'gesperrt'}`, SUPPORT)
   return { benutzer: await ladeBenutzerDerOrganisation(organisationId) }
 }

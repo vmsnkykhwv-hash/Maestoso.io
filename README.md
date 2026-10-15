@@ -67,6 +67,18 @@ keine aktive Marke in Software-relevanten Klassen) und die Domain
   Tabelle `aenderungsprotokoll`, Migration `0026`. Ein Fehler beim
   Mitschreiben bricht die eigentliche Aktion bewusst nicht ab. Neue
   Aktionen müssen den Aufruf selbst mitbringen.
+- **Der Plattform-Admin kommt nicht unbemerkt in einen Betrieb.** Seine
+  Sitzung gilt nur auf der Plattform-Domain, das Dashboard eines Betriebs
+  nimmt nur dessen Verwaltungskonten und freigegebene Geräte an. Was er an
+  einem Betrieb ändert (Konto einladen, Einladung erneuern, 2FA zurücksetzen,
+  Konto sperren, Module, Domain), steht dort im Änderungsprotokoll als
+  „Maestoso-Support (E-Mail)“ (`supportProtokollieren`, Migration `0027`).
+  Änderungen an Zugängen und Domain gehen außerdem per Mail an alle
+  eingerichteten Verwaltungskonten des Betriebs – auch wenn eine Inhaberin
+  ein weiteres Konto einlädt oder sperrt (`lib/konten/sicherheitshinweis.ts`).
+  Eine Passwortänderung meldet die Mail an die Person selbst. Bleibt der
+  direkte Datenbankzugriff (Service-Role-Key): der gehört nur auf den
+  Server und in einen Passwortmanager mit 2FA.
 
 Ein nicht freigeschaltetes Modul ist nicht gesperrt im Sinne von
 unsichtbar – die Organisation sieht und nutzt das echte Modul, nur mit
@@ -664,7 +676,8 @@ Mal unter einem Advisory-Lock direkt vor dem Insert laufen lassen (siehe
 Veranstaltungen, `0022` rechtliche Angaben, `0023` `custom_domain_aktiv`,
 `0024` Konten (Passwort + 2FA), `0025` Geräte, Kopplungscodes und
 Tool-Freischaltung je Mitarbeiter*in, `0026` das
-Änderungsprotokoll (siehe "Zugänge & Rollen").
+Änderungsprotokoll, `0027` Admin-Eingriffe darin als „Maestoso-Support“
+(siehe "Zugänge & Rollen").
 
 ### 2. Umgebungsvariablen
 

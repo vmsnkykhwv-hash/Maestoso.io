@@ -24,11 +24,17 @@ import { ladeKonto, sitzungenBeenden } from '@/lib/konten/daten'
 import { getBetriebsSitzung } from '@/lib/session'
 import { getServiceClient } from '@/lib/supabase/server'
 import { protokollieren } from '@/lib/protokoll'
+import { verwaltungBenachrichtigen } from '@/lib/konten/sicherheitshinweis'
 
 async function inhaberOderFehler() {
   const sitzung = await getBetriebsSitzung()
   if (sitzung?.art !== 'inhaber') throw new Error('Keine Berechtigung')
   return sitzung
+}
+
+async function eigenerName(kontoId: string): Promise<string> {
+  const konto = await ladeKonto('benutzer', kontoId)
+  return konto ? `${konto.name || konto.email} (${konto.email})` : 'ein Verwaltungskonto'
 }
 
 export async function kontoEinladenAktion(
@@ -39,7 +45,11 @@ export async function kontoEinladenAktion(
   const angelegt = await benutzerAnlegen(sitzung.organisationId, email, name)
   if (!angelegt.benutzerId) return { fehler: angelegt.fehler }
   const einladung = await einladungVerschicken(sitzung.organisationId, angelegt.benutzerId, email)
-  await protokollieren('zugaenge', 'Verwaltungskonto eingeladen', email, null)
+  await protokollieren('zugaenge', 'Verwaltungskonto eingeladen', email, angelegt.benutzerId)
+  await verwaltungBenachrichtigen(sitzung.organisationId, `Neues Verwaltungskonto eingeladen: ${name.trim() || email}`, await eigenerName(sitzung.kontoId), [
+    sitzung.kontoId,
+    angelegt.benutzerId,
+  ])
   return { ...einladung, benutzer: await ladeBenutzerDerOrganisation(sitzung.organisationId) }
 }
 
@@ -62,7 +72,13 @@ export async function kontoAktivSetzenAktion(benutzerId: string, aktiv: boolean)
   const { error } = await getServiceClient().from('benutzer').update({ aktiv }).eq('id', benutzerId).eq('organisation_id', sitzung.organisationId)
   if (error) return { fehler: error.message }
   if (!aktiv) await sitzungenBeenden(konto)
-  await protokollieren('zugaenge', 'Verwaltungskonto gesperrt/entsperrt', aktiv ? 'entsperrt' : 'gesperrt', benutzerId)
+  await protokollieren('zugaenge', 'Verwaltungskonto gesperrt/entsperrt', `${konto.email}: ${aktiv ? 'entsperrt' : 'gesperrt'}`, benutzerId)
+  await verwaltungBenachrichtigen(
+    sitzung.organisationId,
+    `Verwaltungskonto ${konto.email} ${aktiv ? 'entsperrt' : 'gesperrt'}`,
+    await eigenerName(sitzung.kontoId),
+    [sitzung.kontoId]
+  )
   return { benutzer: await ladeBenutzerDerOrganisation(sitzung.organisationId) }
 }
 
