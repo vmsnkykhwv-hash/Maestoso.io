@@ -92,7 +92,7 @@ export async function bildHochladen(
   if (rolle === 'hero') {
     const bestehende = await ladeBilder(organisationId, 'hero')
     for (const altesBild of bestehende) {
-      await bildLoeschen(altesBild.id)
+      await bildLoeschen(organisationId, altesBild.id)
     }
   }
 
@@ -124,12 +124,27 @@ export async function bildHochladen(
   return { bild: bildAusZeile(supabase, data) }
 }
 
-export async function bildLoeschen(id: string): Promise<{ fehler?: string }> {
-  const supabase = getServiceClient()
-  const { data } = await supabase.from('website_bilder').select('storage_pfad').eq('id', id).maybeSingle()
-  if (data) await supabase.storage.from(STORAGE_BUCKET).remove([data.storage_pfad as string])
+// Alle Änderungs-/Löschfunktionen unten filtern zusätzlich auf
+// organisation_id: die IDs kommen vom Client, und ohne diesen Filter könnte
+// ein angemeldeter Betrieb mit einer fremden ID Bilder oder Speisekarten
+// anderer Betriebe ändern oder löschen (kein RLS-Sicherheitsnetz, siehe
+// CLAUDE.md). Trifft der Filter nichts, gibt es eine Fehlermeldung statt
+// eines stillen "Erfolgs".
+const NICHT_GEFUNDEN = { fehler: 'Nicht gefunden' }
 
-  const { error } = await supabase.from('website_bilder').delete().eq('id', id)
+export async function bildLoeschen(organisationId: string, id: string): Promise<{ fehler?: string }> {
+  const supabase = getServiceClient()
+  const { data } = await supabase
+    .from('website_bilder')
+    .select('storage_pfad')
+    .eq('id', id)
+    .eq('organisation_id', organisationId)
+    .maybeSingle()
+  if (!data) return NICHT_GEFUNDEN
+
+  await supabase.storage.from(STORAGE_BUCKET).remove([data.storage_pfad as string])
+
+  const { error } = await supabase.from('website_bilder').delete().eq('id', id).eq('organisation_id', organisationId)
   if (error) return { fehler: error.message }
   return {}
 }
@@ -169,17 +184,29 @@ export async function kategorieErstellen(organisationId: string, name: string): 
   return { kategorie: kategorieAusZeile(data) }
 }
 
-export async function kategorieAktualisieren(id: string, name: string): Promise<{ fehler?: string }> {
+export async function kategorieAktualisieren(organisationId: string, id: string, name: string): Promise<{ fehler?: string }> {
   const supabase = getServiceClient()
-  const { error } = await supabase.from('website_menu_kategorien').update({ name: name.trim() }).eq('id', id)
+  const { data, error } = await supabase
+    .from('website_menu_kategorien')
+    .update({ name: name.trim() })
+    .eq('id', id)
+    .eq('organisation_id', organisationId)
+    .select('id')
   if (error) return { fehler: error.message }
+  if (!data?.length) return NICHT_GEFUNDEN
   return {}
 }
 
-export async function kategorieLoeschen(id: string): Promise<{ fehler?: string }> {
+export async function kategorieLoeschen(organisationId: string, id: string): Promise<{ fehler?: string }> {
   const supabase = getServiceClient()
-  const { error } = await supabase.from('website_menu_kategorien').delete().eq('id', id)
+  const { data, error } = await supabase
+    .from('website_menu_kategorien')
+    .delete()
+    .eq('id', id)
+    .eq('organisation_id', organisationId)
+    .select('id')
   if (error) return { fehler: error.message }
+  if (!data?.length) return NICHT_GEFUNDEN
   return {}
 }
 
@@ -211,6 +238,17 @@ export async function eintragErstellen(
   input: { kategorieId: string; name: string; beschreibung?: string | null; preis: number }
 ): Promise<{ fehler?: string; eintrag?: MenuEintrag }> {
   const supabase = getServiceClient()
+
+  // Die Kategorie-ID kommt vom Client – ohne diese Prüfung ließe sich ein
+  // Eintrag in die Speisekarte eines fremden Betriebs hängen.
+  const { data: kategorie } = await supabase
+    .from('website_menu_kategorien')
+    .select('id')
+    .eq('id', input.kategorieId)
+    .eq('organisation_id', organisationId)
+    .maybeSingle()
+  if (!kategorie) return NICHT_GEFUNDEN
+
   const { data: bestehende } = await supabase
     .from('website_menu_eintraege')
     .select('sortierung')
@@ -237,6 +275,7 @@ export async function eintragErstellen(
 }
 
 export async function eintragAktualisieren(
+  organisationId: string,
   id: string,
   patch: { name?: string; beschreibung?: string | null; preis?: number; aktiv?: boolean }
 ): Promise<{ fehler?: string }> {
@@ -247,14 +286,26 @@ export async function eintragAktualisieren(
   if (patch.preis !== undefined) updateZeile.preis = patch.preis
   if (patch.aktiv !== undefined) updateZeile.aktiv = patch.aktiv
 
-  const { error } = await supabase.from('website_menu_eintraege').update(updateZeile).eq('id', id)
+  const { data, error } = await supabase
+    .from('website_menu_eintraege')
+    .update(updateZeile)
+    .eq('id', id)
+    .eq('organisation_id', organisationId)
+    .select('id')
   if (error) return { fehler: error.message }
+  if (!data?.length) return NICHT_GEFUNDEN
   return {}
 }
 
-export async function eintragLoeschen(id: string): Promise<{ fehler?: string }> {
+export async function eintragLoeschen(organisationId: string, id: string): Promise<{ fehler?: string }> {
   const supabase = getServiceClient()
-  const { error } = await supabase.from('website_menu_eintraege').delete().eq('id', id)
+  const { data, error } = await supabase
+    .from('website_menu_eintraege')
+    .delete()
+    .eq('id', id)
+    .eq('organisation_id', organisationId)
+    .select('id')
   if (error) return { fehler: error.message }
+  if (!data?.length) return NICHT_GEFUNDEN
   return {}
 }

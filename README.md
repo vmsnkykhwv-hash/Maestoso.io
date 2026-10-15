@@ -260,6 +260,11 @@ Fehler durchgesehen. Alles Gefundene wurde behoben:
   `lib/zeiterfassung/*.ts`, `lib/mitarbeiter/daten.ts`) – inklusive des
   Lager-Export-Routenhandlers, der zuvor jede `pruefungId` ungeprüft
   akzeptierte.
+  Nachtrag: Das Website-Modul war beim Audit übersehen worden – Bild
+  löschen, Speisekarten-Kategorien und -Einträge ändern/löschen sowie das
+  Anlegen eines Eintrags in einer fremden Kategorie liefen nur über die ID.
+  Jetzt ebenfalls über `organisation_id` gefiltert (`lib/website/daten.ts`),
+  mit "Nicht gefunden" statt stillem Erfolg, wenn die ID nicht passt.
 - **Bestellung – Preismanipulation**: Der Online-Bestellen-Endpunkt nahm
   bisher Name/Preis jeder Warenkorbposition direkt vom Client entgegen –
   ein direkter Aufruf der Server Action (am Formular vorbei) hätte beliebige

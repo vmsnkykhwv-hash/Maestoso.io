@@ -39,8 +39,8 @@ export async function bildHochladenAktion(datei: File, rolle: BildRolle): Promis
 }
 
 export async function bildLoeschenAktion(id: string): Promise<{ fehler?: string }> {
-  await organisationIdOderFehler()
-  return bildLoeschen(id)
+  const organisationId = await organisationIdOderFehler()
+  return bildLoeschen(organisationId, id)
 }
 
 export async function kategorieErstellenAktion(name: string): Promise<{ fehler?: string; kategorie?: MenuKategorie }> {
@@ -49,13 +49,13 @@ export async function kategorieErstellenAktion(name: string): Promise<{ fehler?:
 }
 
 export async function kategorieAktualisierenAktion(id: string, name: string): Promise<{ fehler?: string }> {
-  await organisationIdOderFehler()
-  return kategorieAktualisieren(id, name)
+  const organisationId = await organisationIdOderFehler()
+  return kategorieAktualisieren(organisationId, id, name)
 }
 
 export async function kategorieLoeschenAktion(id: string): Promise<{ fehler?: string }> {
-  await organisationIdOderFehler()
-  return kategorieLoeschen(id)
+  const organisationId = await organisationIdOderFehler()
+  return kategorieLoeschen(organisationId, id)
 }
 
 export async function eintragErstellenAktion(input: {
@@ -72,13 +72,13 @@ export async function eintragAktualisierenAktion(
   id: string,
   patch: { name?: string; beschreibung?: string | null; preis?: number; aktiv?: boolean }
 ): Promise<{ fehler?: string }> {
-  await organisationIdOderFehler()
-  return eintragAktualisieren(id, patch)
+  const organisationId = await organisationIdOderFehler()
+  return eintragAktualisieren(organisationId, id, patch)
 }
 
 export async function eintragLoeschenAktion(id: string): Promise<{ fehler?: string }> {
-  await organisationIdOderFehler()
-  return eintragLoeschen(id)
+  const organisationId = await organisationIdOderFehler()
+  return eintragLoeschen(organisationId, id)
 }
 
 export async function menuLadenAktion(): Promise<{ kategorien: MenuKategorie[]; eintraege: MenuEintrag[] }> {
