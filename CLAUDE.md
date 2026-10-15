@@ -21,8 +21,8 @@ eigene Sessions). Nichts von hier dorthin übernehmen und umgekehrt – auch
 keine Beispielwerte (z. B. nie eine echte Domain eines anderen Projekts
 als Platzhalter verwenden, siehe weiter unten).
 
-Dieses Repo ist **lokal, kein GitHub-Remote**. Committen ja, pushen nein
-– es gibt nichts, wohin gepusht werden sollte.
+Remote: `origin` → `github.com/vmsnkykhwv-hash/Maestoso.io`, Branch
+`master`. Nach jedem Commit pushen.
 
 ## Wo was liegt
 
@@ -94,8 +94,8 @@ Nicht wiederholen:
   sauber durchlaufen.
 - Kommentare erklären das *Warum*, nicht das *Was*.
 - Texte in der App sind deutsch und geduzt.
-- Lokal committen nach abgeschlossenen Schritten, nicht pushen (kein
-  Remote vorhanden).
+- Nach abgeschlossenen Schritten committen und auf `origin/master`
+  pushen.
 - Die zwei Demo-Artefakte (Desktop + Mobile, auf claude.ai veröffentlicht)
   und `maestoso.zip` sind **nicht Teil dieses Repos** – sie liegen im
   Scratchpad der jeweiligen Session und werden nur auf expliziten Wunsch
