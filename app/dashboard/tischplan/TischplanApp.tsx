@@ -15,9 +15,8 @@ import { cn } from '@/lib/utils'
 
 type Ansicht = 'reservierungen' | 'tische' | 'blockierungen' | 'ausnahmen' | 'auswertung' | 'einstellungen'
 
-function BuchungsLink({ organisationId }: { organisationId: string }) {
+function BuchungsLink({ link }: { link: string }) {
   const [kopiert, setKopiert] = useState(false)
-  const link = typeof window !== 'undefined' ? `${window.location.origin}/reservieren/${organisationId}` : ''
 
   return (
     <button
@@ -39,12 +38,15 @@ function BuchungsLink({ organisationId }: { organisationId: string }) {
 
 export default function TischplanApp({
   freigeschaltet,
-  organisationId,
+  oeffentlicherLink,
   anfangsEinstellungen,
   anfangsTische,
 }: {
   freigeschaltet: boolean
-  organisationId: string
+  // Fertiger Link unter der Domain des Betriebs (lib/url.ts →
+  // oeffentlicheUrl), nicht aus window.location gebaut: das Dashboard
+  // läuft nicht unbedingt unter derselben Adresse wie die Gästeseiten.
+  oeffentlicherLink: string
   anfangsEinstellungen: EinstellungenTyp
   anfangsTische: Tisch[]
 }) {
@@ -61,7 +63,7 @@ export default function TischplanApp({
           <ArrowLeft className="h-4 w-4" /> Zurück zu den Tools
         </Link>
 
-        <BuchungsLink organisationId={organisationId} />
+        <BuchungsLink link={oeffentlicherLink} />
 
         <div className="mb-4 flex flex-wrap gap-2">
           {(

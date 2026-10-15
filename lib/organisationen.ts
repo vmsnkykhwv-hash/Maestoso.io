@@ -89,18 +89,56 @@ export async function subdomainVorschlagen(name: string): Promise<string> {
   return `${basis}-${Date.now()}`
 }
 
+export type HostOrganisation = {
+  id: string
+  subdomain: string | null
+  customDomain: string | null
+  customDomainAktiv: boolean
+  // true, wenn die Anfrage über die Plattform-Subdomain kam (nicht über die
+  // eigene Domain) – nur dann leitet proxy.ts gegebenenfalls um.
+  ueberSubdomain: boolean
+}
+
+function hostOrganisationAusZeile(d: Record<string, unknown>, ueberSubdomain: boolean): HostOrganisation {
+  return {
+    id: d.id as string,
+    subdomain: (d.subdomain as string | null) ?? null,
+    customDomain: (d.custom_domain as string | null) ?? null,
+    customDomainAktiv: d.custom_domain_aktiv === true,
+    ueberSubdomain,
+  }
+}
+
+const HOST_SPALTEN = 'id, subdomain, custom_domain, custom_domain_aktiv'
+
 // Domain-basiertes Routing (siehe proxy.ts): ordnet einen eingehenden Host
 // (Plattform-Subdomain oder eigene Domain) einer Organisation zu.
-export async function ladeOrganisationIdFuerHost(host: string, plattformDomain: string): Promise<string | null> {
+export async function ladeOrganisationFuerHost(host: string, plattformDomain: string): Promise<HostOrganisation | null> {
   const supabase = getServiceClient()
   const hostOhnePort = host.split(':')[0].toLowerCase()
 
   if (hostOhnePort.endsWith(`.${plattformDomain}`)) {
     const subdomain = hostOhnePort.slice(0, -(plattformDomain.length + 1))
-    const { data } = await supabase.from('organisationen').select('id').eq('subdomain', subdomain).maybeSingle()
-    return (data?.id as string | undefined) ?? null
+    const { data } = await supabase.from('organisationen').select(HOST_SPALTEN).eq('subdomain', subdomain).maybeSingle()
+    return data ? hostOrganisationAusZeile(data, true) : null
   }
 
-  const { data } = await supabase.from('organisationen').select('id').eq('custom_domain', hostOhnePort).maybeSingle()
-  return (data?.id as string | undefined) ?? null
+  const { data } = await supabase.from('organisationen').select(HOST_SPALTEN).eq('custom_domain', hostOhnePort).maybeSingle()
+  return data ? hostOrganisationAusZeile(data, false) : null
+}
+
+export async function ladeHostOrganisationPerId(organisationId: string): Promise<HostOrganisation | null> {
+  const supabase = getServiceClient()
+  const { data } = await supabase.from('organisationen').select(HOST_SPALTEN).eq('id', organisationId).maybeSingle()
+  return data ? hostOrganisationAusZeile(data, true) : null
+}
+
+// Die Adresse, unter der Gäste einen Betrieb erreichen: die eigene Domain,
+// sobald sie funktioniert, sonst die Subdomain. null ohne Plattform-Domain
+// (lokale Entwicklung) – dann gelten die internen Pfade mit ID.
+export function oeffentlicherHost(org: HostOrganisation, plattformDomain: string | undefined): string | null {
+  if (!plattformDomain) return null
+  if (org.customDomain && org.customDomainAktiv) return org.customDomain
+  if (org.subdomain) return `${org.subdomain}.${plattformDomain}`
+  return null
 }

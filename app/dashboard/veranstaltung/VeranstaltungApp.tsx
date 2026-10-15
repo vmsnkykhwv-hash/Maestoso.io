@@ -34,9 +34,8 @@ function formatPreis(betrag: number): string {
   return betrag.toFixed(2).replace('.', ',') + ' €'
 }
 
-function AnfrageLink({ organisationId }: { organisationId: string }) {
+function AnfrageLink({ link }: { link: string }) {
   const [kopiert, setKopiert] = useState(false)
-  const link = typeof window !== 'undefined' ? `${window.location.origin}/veranstaltung/${organisationId}` : ''
 
   return (
     <button
@@ -402,12 +401,15 @@ function EinstellungenCard({ anfangsEinstellungen }: { anfangsEinstellungen: Ver
 
 export default function VeranstaltungApp({
   freigeschaltet,
-  organisationId,
+  oeffentlicherLink,
   anfangsEinstellungen,
   anfangsVeranstaltungen,
 }: {
   freigeschaltet: boolean
-  organisationId: string
+  // Fertiger Link unter der Domain des Betriebs (lib/url.ts →
+  // oeffentlicheUrl), nicht aus window.location gebaut: das Dashboard
+  // läuft nicht unbedingt unter derselben Adresse wie die Gästeseiten.
+  oeffentlicherLink: string
   anfangsEinstellungen: VeranstaltungEinstellungen
   anfangsVeranstaltungen: Veranstaltung[]
 }) {
@@ -422,7 +424,7 @@ export default function VeranstaltungApp({
           <ArrowLeft className="h-4 w-4" /> Zurück zu den Tools
         </Link>
 
-        <AnfrageLink organisationId={organisationId} />
+        <AnfrageLink link={oeffentlicherLink} />
 
         <div className="mb-4 flex flex-wrap gap-2">
           {(

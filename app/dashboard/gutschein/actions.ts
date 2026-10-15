@@ -11,7 +11,7 @@ import {
 } from '@/lib/gutschein/daten'
 import { ladePaypalEinstellungen, paypalEinstellungenSpeichern } from '@/lib/paypal/daten'
 import { paypalWebhookRegistrieren } from '@/lib/paypal/client'
-import { herkunftUrl } from '@/lib/url'
+import { plattformUrl } from '@/lib/url'
 import type { Gutschein, GutscheinEinstellungen } from '@/lib/gutschein/types'
 import type { PaypalModus } from '@/lib/paypal/types'
 
@@ -79,7 +79,9 @@ export async function paypalEinstellungenSpeichernAktion(input: {
   let webhookId: string | undefined
   let warnung: string | undefined
   if (input.aktiv && (!bestehend.webhookId || neuesSecret)) {
-    const basis = await herkunftUrl(orgId)
+    // Plattform-Domain statt Domain des Betriebs: Webhooks sieht kein Gast,
+    // und so bleibt die Adresse auch bei einem späteren Domainwechsel gültig.
+    const basis = await plattformUrl()
     const ergebnis = await paypalWebhookRegistrieren({
       clientId,
       clientSecret: neuesSecret || bestehend.clientSecret!,

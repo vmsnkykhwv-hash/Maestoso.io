@@ -1,4 +1,6 @@
 import { headers } from 'next/headers'
+import { internerPfad } from '@/lib/gaestePfade'
+import { ladeHostOrganisationPerId, oeffentlicherHost } from '@/lib/organisationen'
 import { getServiceClient } from '@/lib/supabase/server'
 
 // Basis-URL aus dem eingehenden Request – funktioniert unabhängig von
@@ -30,4 +32,26 @@ export async function herkunftUrl(organisationId?: string): Promise<string> {
   if (erlaubt.has(hostOhnePort)) return `${protokoll}://${host}`
 
   return `https://${plattformDomain}`
+}
+
+// Absolute Adresse einer Gästeseite (z. B. '/reservieren', '/gutschein/erfolg')
+// unter der Domain, unter der Gäste den Betrieb erreichen – für Links, die
+// außerhalb einer Anfrage auf dieser Domain entstehen: Dashboard-Links zum
+// Teilen, PayPal-Rückkehradresse, E-Mails. Ohne Plattform-Domain (lokale
+// Entwicklung) die interne Route unter der aktuellen Adresse.
+export async function oeffentlicheUrl(organisationId: string, pfad: string): Promise<string> {
+  const plattformDomain = process.env.NEXT_PUBLIC_PLATTFORM_DOMAIN
+  const organisation = await ladeHostOrganisationPerId(organisationId)
+  const host = organisation && oeffentlicherHost(organisation, plattformDomain)
+  if (host) return `https://${host}${pfad === '/' ? '' : pfad}`
+  return `${await herkunftUrl(organisationId)}${internerPfad(organisationId, pfad)}`
+}
+
+// Für Adressen, die nie ein Gast sieht (Webhooks): immer die
+// Plattform-Domain, damit sie bei einem Domainwechsel des Betriebs nicht
+// ins Leere laufen.
+export async function plattformUrl(): Promise<string> {
+  const plattformDomain = process.env.NEXT_PUBLIC_PLATTFORM_DOMAIN
+  if (plattformDomain) return `https://${plattformDomain}`
+  return herkunftUrl()
 }

@@ -13,16 +13,8 @@ import { cn } from '@/lib/utils'
 
 type Ansicht = 'inhalt' | 'speisekarte' | 'bilder' | 'domain'
 
-function websiteLink(organisationId: string, subdomain: string | null): string {
-  const plattformDomain = process.env.NEXT_PUBLIC_PLATTFORM_DOMAIN
-  if (plattformDomain && subdomain) return `https://${subdomain}.${plattformDomain}`
-  if (typeof window !== 'undefined') return `${window.location.origin}/website/${organisationId}`
-  return `/website/${organisationId}`
-}
-
-function WebsiteLink({ organisationId, subdomain }: { organisationId: string; subdomain: string | null }) {
+function WebsiteLink({ link }: { link: string }) {
   const [kopiert, setKopiert] = useState(false)
-  const link = websiteLink(organisationId, subdomain)
 
   return (
     <div className="mb-4 flex items-center gap-2">
@@ -40,7 +32,7 @@ function WebsiteLink({ organisationId, subdomain }: { organisationId: string; su
         {kopiert ? <Check className="h-3.5 w-3.5 flex-none text-success" /> : <Copy className="h-3.5 w-3.5 flex-none" />}
       </button>
       <a
-        href={`/website/${organisationId}`}
+        href={link}
         target="_blank"
         rel="noreferrer"
         aria-label="Vorschau in neuem Tab öffnen"
@@ -53,7 +45,6 @@ function WebsiteLink({ organisationId, subdomain }: { organisationId: string; su
 }
 
 export default function WebsiteApp({
-  organisationId,
   freigeschaltet,
   anfangsInhalt,
   anfangsHeroBild,
@@ -61,9 +52,9 @@ export default function WebsiteApp({
   anfangsKategorien,
   anfangsEintraege,
   subdomain,
+  oeffentlicherLink,
   customDomain,
 }: {
-  organisationId: string
   freigeschaltet: boolean
   anfangsInhalt: WebsiteInhalt
   anfangsHeroBild: WebsiteBild | null
@@ -71,6 +62,7 @@ export default function WebsiteApp({
   anfangsKategorien: MenuKategorie[]
   anfangsEintraege: MenuEintrag[]
   subdomain: string | null
+  oeffentlicherLink: string
   customDomain: string | null
 }) {
   const [ansicht, setAnsicht] = useState<Ansicht>('inhalt')
@@ -89,7 +81,7 @@ export default function WebsiteApp({
           <ArrowLeft className="h-4 w-4" /> Zurück zu den Tools
         </Link>
 
-        <WebsiteLink organisationId={organisationId} subdomain={subdomain} />
+        <WebsiteLink link={oeffentlicherLink} />
 
         <div className="mb-4 flex flex-wrap gap-2">
           {(

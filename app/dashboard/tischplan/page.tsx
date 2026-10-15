@@ -4,6 +4,7 @@ import { getSitzung } from '@/lib/session'
 import { ladeFreischaltungen } from '@/lib/organisationen'
 import { ladeEinstellungen, ladeTische } from '@/lib/tischplan/daten'
 import TischplanApp from './TischplanApp'
+import { oeffentlicheUrl } from '@/lib/url'
 
 export const dynamic = 'force-dynamic'
 
@@ -22,7 +23,7 @@ export default async function TischplanPage() {
       <AppHeader titel="Tischplan & Reservierungen" />
       <TischplanApp
         freigeschaltet={freischaltungen.tischplan}
-        organisationId={sitzung.organisationId}
+        oeffentlicherLink={await oeffentlicheUrl(sitzung.organisationId, '/reservieren')}
         anfangsEinstellungen={einstellungen}
         anfangsTische={tische}
       />

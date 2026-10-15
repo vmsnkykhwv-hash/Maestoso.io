@@ -154,7 +154,12 @@ export async function domainVerbindenAktion(
     hinweis = 'Gespeichert, aber Vercel ist nicht eingerichtet – Domain dort bitte von Hand hinzufügen.'
   }
 
-  const { error } = await supabase.from('organisationen').update({ custom_domain: domain }).eq('id', organisationId)
+  // Weiterleitung von der Subdomain erst wieder einschalten, wenn "Status
+  // prüfen" bestätigt, dass die (neue) Domain funktioniert.
+  const { error } = await supabase
+    .from('organisationen')
+    .update({ custom_domain: domain, custom_domain_aktiv: false })
+    .eq('id', organisationId)
   if (error) {
     return { fehler: error.code === '23505' ? 'Diese Domain ist schon einer anderen Organisation zugeordnet.' : error.message }
   }
@@ -170,7 +175,16 @@ export async function domainStatusAktion(organisationId: string): Promise<{ fehl
   const { data } = await supabase.from('organisationen').select('custom_domain').eq('id', organisationId).maybeSingle()
   const domain = data?.custom_domain as string | null | undefined
   if (!domain) return { fehler: 'Keine eigene Domain hinterlegt.' }
-  return domainStatusLaden(domain)
+
+  const ergebnis = await domainStatusLaden(domain)
+  if (ergebnis.status) {
+    // Merkt sich das Ergebnis für proxy.ts: nur bei funktionierender Domain
+    // wird die Subdomain dorthin umgeleitet – und bricht die DNS später weg,
+    // schaltet die nächste Prüfung die Umleitung wieder ab.
+    const aktiv = ergebnis.status.verifiziert && ergebnis.status.dnsKorrekt
+    await supabase.from('organisationen').update({ custom_domain_aktiv: aktiv }).eq('id', organisationId)
+  }
+  return ergebnis
 }
 
 export async function domainEntfernenAktion(organisationId: string): Promise<{ fehler?: string }> {
@@ -184,7 +198,10 @@ export async function domainEntfernenAktion(organisationId: string): Promise<{ f
     if (entfernt.fehler) return { fehler: entfernt.fehler }
   }
 
-  const { error } = await supabase.from('organisationen').update({ custom_domain: null }).eq('id', organisationId)
+  const { error } = await supabase
+    .from('organisationen')
+    .update({ custom_domain: null, custom_domain_aktiv: false })
+    .eq('id', organisationId)
   if (error) return { fehler: error.message }
   revalidatePath('/plattform-admin')
   return {}

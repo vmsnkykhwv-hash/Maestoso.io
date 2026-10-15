@@ -678,6 +678,18 @@ anmelden.
   bewusst über die Vercel-Oberfläche: beides kostet Geld bzw. ist nicht
   einfach rückgängig zu machen. Beim Löschen einer Organisation wird ihre
   Domain auch aus Vercel entfernt.
+- Gästeseiten unter der Domain des Betriebs: `/` (Website), `/reservieren`,
+  `/bestellen`, `/gutschein`, `/gutschein/erfolg`, `/veranstaltung`,
+  `/impressum`, `/datenschutz` (Zuordnung in `lib/gaestePfade.ts`, gemeinsam
+  für `proxy.ts` und alle Links). Alte Adressen
+  `maestoso.io/reservieren/<id>` usw. leiten dorthin um.
+- Subdomain verstecken: Sobald „Status prüfen“ die eigene Domain als fertig
+  meldet (`custom_domain_aktiv`, Migration `0023`), leitet die Subdomain
+  dauerhaft (308) auf die eigene Domain um. Bricht die DNS später weg,
+  schaltet die nächste Prüfung die Umleitung wieder ab. Dashboard-Links zum
+  Teilen und die PayPal-Rückkehradresse nutzen ebenfalls die eigene Domain
+  (`oeffentlicheUrl` in `lib/url.ts`), der PayPal-Webhook bewusst die
+  Plattform-Domain.
 
 ## Aufbau
 

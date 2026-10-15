@@ -4,6 +4,7 @@ import { getSitzung } from '@/lib/session'
 import { ladeFreischaltungen } from '@/lib/organisationen'
 import { ladeBestellEinstellungen } from '@/lib/bestellung/daten'
 import BestellungApp from './BestellungApp'
+import { oeffentlicheUrl } from '@/lib/url'
 
 export const dynamic = 'force-dynamic'
 
@@ -21,7 +22,7 @@ export default async function BestellungPage() {
       <AppHeader titel="Online-Bestellung" />
       <BestellungApp
         freigeschaltet={freischaltungen.bestellung}
-        organisationId={sitzung.organisationId}
+        oeffentlicherLink={await oeffentlicheUrl(sitzung.organisationId, '/bestellen')}
         anfangsEinstellungen={einstellungen}
       />
     </div>

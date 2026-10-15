@@ -4,6 +4,7 @@ import { getSitzung } from '@/lib/session'
 import { ladeFreischaltungen } from '@/lib/organisationen'
 import { ladeVeranstaltungEinstellungen, ladeVeranstaltungenFuerOrganisation } from '@/lib/veranstaltung/daten'
 import VeranstaltungApp from './VeranstaltungApp'
+import { oeffentlicheUrl } from '@/lib/url'
 
 export const dynamic = 'force-dynamic'
 
@@ -22,7 +23,7 @@ export default async function VeranstaltungPage() {
       <AppHeader titel="Veranstaltungsplanung" />
       <VeranstaltungApp
         freigeschaltet={freischaltungen.veranstaltung}
-        organisationId={sitzung.organisationId}
+        oeffentlicherLink={await oeffentlicheUrl(sitzung.organisationId, '/veranstaltung')}
         anfangsEinstellungen={einstellungen}
         anfangsVeranstaltungen={veranstaltungen}
       />

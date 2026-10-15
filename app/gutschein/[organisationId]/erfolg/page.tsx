@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { gaesteHref } from '@/lib/gaesteLinks'
 import { ladeGutschein } from '@/lib/gutschein/daten'
 import { gutscheinPaypalZahlungErfassen } from '@/lib/gutschein/zahlung'
 import RechtlicheFusszeile from '@/components/rechtliches/RechtlicheFusszeile'
@@ -36,7 +37,7 @@ export default async function GutscheinErfolgPage({
             </p>
           </>
         )}
-        <Link href={`/gutschein/${organisationId}`} className="text-sm font-medium text-accent">
+        <Link href={await gaesteHref(organisationId, '/gutschein')} className="text-sm font-medium text-accent">
           Zurück
         </Link>
         <RechtlicheFusszeile organisationId={organisationId} className="mt-12" />

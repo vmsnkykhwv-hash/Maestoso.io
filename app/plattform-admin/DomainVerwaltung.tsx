@@ -110,7 +110,9 @@ export default function DomainVerwaltung({
             <div className="space-y-2">
               <p className={`flex items-center gap-1.5 text-xs font-medium ${fertig ? 'text-success' : 'text-locked'}`}>
                 {fertig ? <CheckCircle2 className="h-4 w-4" /> : <CircleAlert className="h-4 w-4" />}
-                {fertig ? 'Fertig – die Website ist unter der Domain erreichbar.' : 'Noch nicht fertig – diese Einträge fehlen:'}
+                {fertig
+                  ? 'Fertig – die Website ist unter der Domain erreichbar, die Subdomain leitet jetzt dorthin um.'
+                  : 'Noch nicht fertig – diese Einträge fehlen:'}
               </p>
               {status.fehlendeEintraege.length > 0 && (
                 <div className="overflow-x-auto">

@@ -12,9 +12,8 @@ import { cn } from '@/lib/utils'
 
 type Ansicht = 'bestellungen' | 'auswertung' | 'einstellungen'
 
-function BestellLink({ organisationId }: { organisationId: string }) {
+function BestellLink({ link }: { link: string }) {
   const [kopiert, setKopiert] = useState(false)
-  const link = typeof window !== 'undefined' ? `${window.location.origin}/bestellen/${organisationId}` : ''
 
   return (
     <button
@@ -36,11 +35,14 @@ function BestellLink({ organisationId }: { organisationId: string }) {
 
 export default function BestellungApp({
   freigeschaltet,
-  organisationId,
+  oeffentlicherLink,
   anfangsEinstellungen,
 }: {
   freigeschaltet: boolean
-  organisationId: string
+  // Fertiger Link unter der Domain des Betriebs (lib/url.ts →
+  // oeffentlicheUrl), nicht aus window.location gebaut: das Dashboard
+  // läuft nicht unbedingt unter derselben Adresse wie die Gästeseiten.
+  oeffentlicherLink: string
   anfangsEinstellungen: BestellEinstellungen
 }) {
   const [ansicht, setAnsicht] = useState<Ansicht>('bestellungen')
@@ -55,7 +57,7 @@ export default function BestellungApp({
           <ArrowLeft className="h-4 w-4" /> Zurück zu den Tools
         </Link>
 
-        <BestellLink organisationId={organisationId} />
+        <BestellLink link={oeffentlicherLink} />
 
         <div className="mb-4 flex flex-wrap gap-2">
           {(

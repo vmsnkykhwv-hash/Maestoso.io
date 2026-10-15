@@ -5,7 +5,7 @@ import { ladeGutscheinEinstellungen, gutscheinAnlegen, gutscheinPaypalOrderSetze
 import { gutscheinBestaetigungsMailSenden } from '@/lib/gutschein/email'
 import { ladePaypalEinstellungen } from '@/lib/paypal/daten'
 import { paypalOrderErstellen } from '@/lib/paypal/client'
-import { herkunftUrl } from '@/lib/url'
+import { oeffentlicheUrl } from '@/lib/url'
 import { oeffentlicheAnfrageSchluessel, rateLimitFehlgeschlagen, rateLimitPruefen, warteHinweis } from '@/lib/rateLimit'
 
 const EMAIL_MUSTER = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -94,7 +94,6 @@ export async function gutscheinKaufenAktion(input: {
   })
   if (ergebnis.fehler || !ergebnis.gutschein) return { fehler: ergebnis.fehler ?? 'Gutschein konnte nicht angelegt werden.' }
 
-  const basis = await herkunftUrl(input.organisationId)
   const order = await paypalOrderErstellen({
     clientId: paypal.clientId,
     clientSecret: paypal.clientSecret,
@@ -102,8 +101,8 @@ export async function gutscheinKaufenAktion(input: {
     betrag: input.betrag,
     referenz: ergebnis.gutschein.id,
     beschreibung: `Gutschein ${organisationName}`,
-    returnUrl: `${basis}/gutschein/${input.organisationId}/erfolg?gutscheinId=${ergebnis.gutschein.id}`,
-    cancelUrl: `${basis}/gutschein/${input.organisationId}`,
+    returnUrl: `${await oeffentlicheUrl(input.organisationId, '/gutschein/erfolg')}?gutscheinId=${ergebnis.gutschein.id}`,
+    cancelUrl: await oeffentlicheUrl(input.organisationId, '/gutschein'),
   })
 
   if ('fehler' in order) return { fehler: order.fehler }
