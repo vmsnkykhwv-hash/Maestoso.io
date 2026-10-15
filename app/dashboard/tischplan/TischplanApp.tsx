@@ -37,11 +37,14 @@ function BuchungsLink({ link }: { link: string }) {
 }
 
 export default function TischplanApp({
+  darfVerwalten,
   freigeschaltet,
   oeffentlicherLink,
   anfangsEinstellungen,
   anfangsTische,
 }: {
+  // Verwaltungskonto (Inhaber*in) – sonst Tresen: keine Einstellungen/Auswertungen.
+  darfVerwalten: boolean
   freigeschaltet: boolean
   // Fertiger Link unter der Domain des Betriebs (lib/url.ts →
   // oeffentlicheUrl), nicht aus window.location gebaut: das Dashboard
@@ -69,13 +72,15 @@ export default function TischplanApp({
           {(
             [
               { key: 'reservierungen', label: 'Reservierungen' },
-              { key: 'tische', label: 'Tische' },
+              { key: 'tische', label: 'Tische', verwaltung: true },
               { key: 'blockierungen', label: 'Blockierungen' },
-              { key: 'ausnahmen', label: 'Ausnahmen' },
-              { key: 'auswertung', label: 'Auswertung' },
-              { key: 'einstellungen', label: 'Einstellungen' },
+              { key: 'ausnahmen', label: 'Ausnahmen', verwaltung: true },
+              { key: 'auswertung', label: 'Auswertung', verwaltung: true },
+              { key: 'einstellungen', label: 'Einstellungen', verwaltung: true },
             ] as const
-          ).map((tab) => (
+          )
+            .filter((tab) => darfVerwalten || !('verwaltung' in tab))
+            .map((tab) => (
             <button
               key={tab.key}
               type="button"

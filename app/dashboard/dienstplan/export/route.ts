@@ -1,14 +1,15 @@
 import { NextRequest } from 'next/server'
 import * as XLSX from 'xlsx'
-import { getMitarbeiterSitzung } from '@/lib/mitarbeiter/session'
+import { getBetriebsSitzung } from '@/lib/session'
 import { ladeMitarbeiterNamen } from '@/lib/mitarbeiter/daten'
 import { ladeSchichtenFuerZeitraum } from '@/lib/dienstplan/daten'
 import { wochentagKurz } from '@/lib/datum'
 
 export async function GET(request: NextRequest) {
-  const sitzung = await getMitarbeiterSitzung()
+  // Exporte und Personaldokumente: nur Verwaltungskonto.
+  const sitzung = await getBetriebsSitzung()
   if (!sitzung) return new Response('Nicht angemeldet', { status: 401 })
-  if (sitzung.rolle !== 'leitung') return new Response('Keine Berechtigung', { status: 403 })
+  if (sitzung.art !== 'inhaber') return new Response('Keine Berechtigung', { status: 403 })
 
   const von = request.nextUrl.searchParams.get('von')
   const bis = request.nextUrl.searchParams.get('bis')

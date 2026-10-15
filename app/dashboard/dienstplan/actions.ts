@@ -1,7 +1,7 @@
 'use server'
 
-import { mitarbeiterSitzungOderFehler } from '@/lib/mitarbeiter/session'
-import { ladeMitarbeiterNamen } from '@/lib/mitarbeiter/daten'
+import { ladeMitarbeiter, ladeMitarbeiterNamen } from '@/lib/mitarbeiter/daten'
+import { aktionFuer, verwaltungFuer } from '@/lib/zugriff'
 import {
   ladeAktiveTauschAnfragen,
   ladeSchicht,
@@ -22,19 +22,35 @@ import { pruefeZuweisung } from '@/lib/dienstplan/regeln'
 import { heuteBerlin } from '@/lib/datum'
 import type { Schicht, TauschAnfrage, Verfuegbarkeit } from '@/lib/dienstplan/types'
 
+// Planen, bestätigen, Team-Verfügbarkeit: nur Verwaltungskonto.
 async function leitungOderFehler() {
-  const sitzung = await mitarbeiterSitzungOderFehler()
-  if (sitzung.rolle !== 'leitung') throw new Error('Keine Berechtigung')
-  return sitzung
+  return verwaltungFuer('dienstplan')
 }
 
+// Eigene Verfügbarkeit, Tausch anbieten/annehmen: die Mitarbeiterin selbst,
+// am Tresen (PIN) oder vom gekoppelten Handy – mit freigeschaltetem
+// Dienstplan.
+async function mitarbeiterSitzungOderFehler() {
+  const sitzung = await aktionFuer('dienstplan')
+  if (sitzung.art === 'inhaber' || !sitzung.mitarbeiter) throw new Error('Nicht als Mitarbeiter angemeldet')
+  return { organisationId: sitzung.organisationId, mitarbeiterId: sitzung.mitarbeiter.id }
+}
+
+// IDs kommen vom Client – ohne diese Prüfung ließe sich eine Schicht einer
+// Person aus einem fremden Betrieb zuweisen.
+async function mitarbeiterGehoertDazu(organisationId: string, mitarbeiterId: string | null | undefined): Promise<boolean> {
+  if (!mitarbeiterId) return true
+  return !!(await ladeMitarbeiter(mitarbeiterId, organisationId))
+}
+
+// Den Plan (wer arbeitet wann) sehen alle mit Dienstplan-Zugang.
 export async function schichtenFuerZeitraumLadenAktion(von: string, bis: string): Promise<Schicht[]> {
-  const sitzung = await mitarbeiterSitzungOderFehler()
+  const sitzung = await aktionFuer('dienstplan')
   return ladeSchichtenFuerZeitraum(sitzung.organisationId, von, bis)
 }
 
 export async function mitarbeiterNamenLadenAktion(): Promise<{ id: string; name: string }[]> {
-  const sitzung = await mitarbeiterSitzungOderFehler()
+  const sitzung = await aktionFuer('dienstplan')
   return ladeMitarbeiterNamen(sitzung.organisationId)
 }
 
@@ -63,6 +79,7 @@ export async function schichtErstellenAktion(input: {
   notiz?: string
 }): Promise<{ fehler?: string; schicht?: Schicht }> {
   const sitzung = await leitungOderFehler()
+  if (!(await mitarbeiterGehoertDazu(sitzung.organisationId, input.mitarbeiterId))) return { fehler: 'Mitarbeiter nicht gefunden' }
 
   const konflikt = await pruefeKonfliktfrei(sitzung.organisationId, input)
   if (konflikt) return { fehler: konflikt }
@@ -75,6 +92,7 @@ export async function schichtAktualisierenAktion(
   patch: { datum?: string; beginn?: string; ende?: string; mitarbeiterId?: string | null; notiz?: string | null }
 ): Promise<{ fehler?: string }> {
   const sitzung = await leitungOderFehler()
+  if (!(await mitarbeiterGehoertDazu(sitzung.organisationId, patch.mitarbeiterId))) return { fehler: 'Mitarbeiter nicht gefunden' }
 
   if (patch.mitarbeiterId !== undefined || patch.datum !== undefined || patch.beginn !== undefined || patch.ende !== undefined) {
     const bestehend = await ladeSchicht(schichtId, sitzung.organisationId)
@@ -101,8 +119,12 @@ export async function schichtLoeschenAktion(schichtId: string): Promise<{ fehler
 }
 
 export async function verfuegbarkeitenLadenAktion(mitarbeiterId: string, von: string, bis: string): Promise<Verfuegbarkeit[]> {
-  const sitzung = await mitarbeiterSitzungOderFehler()
-  if (sitzung.rolle !== 'leitung' && sitzung.mitarbeiterId !== mitarbeiterId) throw new Error('Keine Berechtigung')
+  const sitzung = await aktionFuer('dienstplan')
+  if (sitzung.art === 'inhaber') {
+    if (!(await mitarbeiterGehoertDazu(sitzung.organisationId, mitarbeiterId))) throw new Error('Keine Berechtigung')
+  } else if (sitzung.mitarbeiter?.id !== mitarbeiterId) {
+    throw new Error('Keine Berechtigung')
+  }
   return ladeVerfuegbarkeitenFuerMitarbeiter(mitarbeiterId, von, bis)
 }
 
@@ -125,7 +147,7 @@ export async function verfuegbarkeitSetzenAktion(input: {
 export type TauschAnfrageMitSchicht = TauschAnfrage & { schicht: Schicht }
 
 export async function offeneTauschAnfragenLadenAktion(): Promise<TauschAnfrageMitSchicht[]> {
-  const sitzung = await mitarbeiterSitzungOderFehler()
+  const sitzung = await aktionFuer('dienstplan')
   const anfragen = await ladeAktiveTauschAnfragen(sitzung.organisationId)
 
   const mitSchicht = await Promise.all(
@@ -150,11 +172,11 @@ export async function tauschAnfrageErstellenAktion(schichtId: string): Promise<{
 }
 
 export async function tauschAnfrageStornierenAktion(anfrageId: string): Promise<{ fehler?: string }> {
-  const sitzung = await mitarbeiterSitzungOderFehler()
+  const sitzung = await aktionFuer('dienstplan')
 
   const anfrage = await ladeTauschAnfrage(anfrageId, sitzung.organisationId)
   if (!anfrage) return { fehler: 'Diese Tausch-Anfrage wurde nicht gefunden' }
-  if (sitzung.rolle !== 'leitung' && anfrage.anfragenderMitarbeiterId !== sitzung.mitarbeiterId) {
+  if (sitzung.art !== 'inhaber' && anfrage.anfragenderMitarbeiterId !== sitzung.mitarbeiter?.id) {
     return { fehler: 'Keine Berechtigung' }
   }
 

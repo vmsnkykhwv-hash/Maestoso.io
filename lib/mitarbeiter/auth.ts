@@ -20,7 +20,10 @@ export type MitarbeiterSitzung = {
 }
 
 const COOKIE_NAME = 'sfp_mitarbeiter'
-const GUELTIGKEIT_MS = 1000 * 60 * 60 * 14 // 14 Stunden, länger als eine Schicht
+// Obergrenze für eine Schicht; am Tresen meldet zusätzlich eine Inaktivitäts-
+// Sperre nach wenigen Minuten ab (app/dashboard/TresenAnmeldung.tsx), damit
+// nicht die nächste Person unter fremdem Namen weiterarbeitet.
+const GUELTIGKEIT_MS = 1000 * 60 * 60 * 14
 
 export async function createMitarbeiterToken(sitzung: MitarbeiterSitzung): Promise<string> {
   return tokenErstellen(sitzung, GUELTIGKEIT_MS)

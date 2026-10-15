@@ -1,6 +1,6 @@
 'use server'
 
-import { getBetriebsSitzung } from '@/lib/session'
+import { aktionFuer, verwaltungFuer } from '@/lib/zugriff'
 import {
   gutscheinEinloesen,
   gutscheinStornieren,
@@ -17,10 +17,16 @@ import type { PaypalModus } from '@/lib/paypal/types'
 
 const PAYPAL_WEBHOOK_EVENTS = ['CHECKOUT.ORDER.APPROVED']
 
+// Tagesgeschäft (Liste, einlösen, bezahlt, stornieren): Verwaltungskonto oder
+// Tresen-Gerät, nicht vom Handy. null statt Fehler, weil die Aufrufer hier
+// schon mit "nicht angemeldet" als Rückgabewert umgehen.
 async function organisationId(): Promise<string | null> {
-  const sitzung = await getBetriebsSitzung()
-  if (!sitzung) return null
-  return sitzung.organisationId
+  return aktionFuer('gutschein', { ohneHandy: true }).then((s) => s.organisationId, () => null)
+}
+
+// Einstellungen und PayPal-Zugangsdaten: nur Verwaltungskonto.
+async function verwaltungsOrganisationId(): Promise<string | null> {
+  return verwaltungFuer('gutschein').then((s) => s.organisationId, () => null)
 }
 
 export async function gutscheineLadenAktion(): Promise<Gutschein[]> {
@@ -30,7 +36,7 @@ export async function gutscheineLadenAktion(): Promise<Gutschein[]> {
 }
 
 export async function gutscheinEinstellungenSpeichernAktion(einstellungen: GutscheinEinstellungen): Promise<{ fehler?: string }> {
-  const orgId = await organisationId()
+  const orgId = await verwaltungsOrganisationId()
   if (!orgId) return { fehler: 'Nicht angemeldet.' }
   return gutscheinEinstellungenSpeichern(orgId, einstellungen)
 }
@@ -44,7 +50,7 @@ export async function paypalEinstellungenLadenAktion(): Promise<{
   modus: PaypalModus
   aktiv: boolean
 }> {
-  const orgId = await organisationId()
+  const orgId = await verwaltungsOrganisationId()
   if (!orgId) return { clientId: '', secretHinterlegt: false, modus: 'sandbox', aktiv: false }
   const einstellungen = await ladePaypalEinstellungen(orgId)
   return {
@@ -61,7 +67,7 @@ export async function paypalEinstellungenSpeichernAktion(input: {
   modus: PaypalModus
   aktiv: boolean
 }): Promise<{ fehler?: string; warnung?: string }> {
-  const orgId = await organisationId()
+  const orgId = await verwaltungsOrganisationId()
   if (!orgId) return { fehler: 'Nicht angemeldet.' }
 
   const bestehend = await ladePaypalEinstellungen(orgId)

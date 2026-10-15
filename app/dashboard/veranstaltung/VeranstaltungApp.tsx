@@ -400,11 +400,14 @@ function EinstellungenCard({ anfangsEinstellungen }: { anfangsEinstellungen: Ver
 }
 
 export default function VeranstaltungApp({
+  darfVerwalten,
   freigeschaltet,
   oeffentlicherLink,
   anfangsEinstellungen,
   anfangsVeranstaltungen,
 }: {
+  // Verwaltungskonto (Inhaber*in) – sonst Tresen: keine Einstellungen/Auswertungen.
+  darfVerwalten: boolean
   freigeschaltet: boolean
   // Fertiger Link unter der Domain des Betriebs (lib/url.ts →
   // oeffentlicheUrl), nicht aus window.location gebaut: das Dashboard
@@ -430,9 +433,11 @@ export default function VeranstaltungApp({
           {(
             [
               { key: 'veranstaltungen', label: 'Veranstaltungen' },
-              { key: 'einstellungen', label: 'Einstellungen' },
+              { key: 'einstellungen', label: 'Einstellungen', verwaltung: true },
             ] as const
-          ).map((tab) => (
+          )
+            .filter((tab) => darfVerwalten || !('verwaltung' in tab))
+            .map((tab) => (
             <button
               key={tab.key}
               type="button"

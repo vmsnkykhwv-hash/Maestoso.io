@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useState } from 'react'
 import { X } from 'lucide-react'
-import Sidebar from './Sidebar'
+import Sidebar, { type ShellNutzer } from './Sidebar'
 
 const MobileNavContext = createContext<(() => void) | null>(null)
 
@@ -14,21 +14,29 @@ export function useOpenMobileNav() {
   return useContext(MobileNavContext)
 }
 
-export default function DashboardShell({ organisationName, children }: { organisationName: string; children: React.ReactNode }) {
+export default function DashboardShell({
+  organisationName,
+  nutzer,
+  children,
+}: {
+  organisationName: string
+  nutzer: ShellNutzer
+  children: React.ReactNode
+}) {
   const [mobilNavOffen, setMobilNavOffen] = useState(false)
 
   return (
     <MobileNavContext.Provider value={() => setMobilNavOffen(true)}>
       <div className="flex min-h-dvh">
         <div className="hidden md:flex">
-          <Sidebar organisationName={organisationName} />
+          <Sidebar organisationName={organisationName} nutzer={nutzer} />
         </div>
 
         {mobilNavOffen && (
           <div className="fixed inset-0 z-50 flex md:hidden">
             <div className="absolute inset-0 bg-sidebar/40" onClick={() => setMobilNavOffen(false)} />
             <div className="relative flex">
-              <Sidebar organisationName={organisationName} />
+              <Sidebar organisationName={organisationName} nutzer={nutzer} />
               <button
                 type="button"
                 onClick={() => setMobilNavOffen(false)}

@@ -1,5 +1,23 @@
 'use server'
 
+import { cookies } from 'next/headers'
+import QRCode from 'qrcode'
+import { GERAET_COOKIE_NAME, GERAET_GUELTIGKEIT_SEKUNDEN, geraeteTokenErstellen, type GeraeteToken } from '@/lib/geraete/auth'
+import {
+  geraetAnlegen,
+  geraetWiderrufen,
+  kopplungscodeEinloesen,
+  kopplungscodeErstellen,
+  kopplungscodePruefen,
+  ladeGeraeteDerOrganisation,
+  type Geraet,
+} from '@/lib/geraete/daten'
+import { ladeMitarbeiter } from '@/lib/mitarbeiter/daten'
+import { MITARBEITER_MODULE } from '@/lib/mitarbeiter/types'
+import type { ModulSchluessel } from '@/lib/module'
+import { pinHashPruefen } from '@/lib/pinHash'
+import { rateLimitFehlgeschlagen, rateLimitPruefen, rateLimitZuruecksetzen, warteHinweis } from '@/lib/rateLimit'
+import { teamUrl } from '@/lib/url'
 import { benutzerAnlegen, ladeBenutzerDerOrganisation, type BenutzerUebersicht } from '@/lib/konten/einladung'
 import { einladungVerschicken } from '@/lib/konten/einladungVersand'
 import { ladeKonto, sitzungenBeenden } from '@/lib/konten/daten'
@@ -43,4 +61,102 @@ export async function kontoAktivSetzenAktion(benutzerId: string, aktiv: boolean)
   if (error) return { fehler: error.message }
   if (!aktiv) await sitzungenBeenden(konto)
   return { benutzer: await ladeBenutzerDerOrganisation(sitzung.organisationId) }
+}
+
+// ---------- Geräte ----------
+
+async function geraeteCookieSetzen(token: GeraeteToken) {
+  const cookieStore = await cookies()
+  cookieStore.set(GERAET_COOKIE_NAME, await geraeteTokenErstellen(token), {
+    httpOnly: true,
+    secure: true,
+    sameSite: 'strict',
+    maxAge: GERAET_GUELTIGKEIT_SEKUNDEN,
+    path: '/',
+  })
+}
+
+// Die Inhaberin meldet sich einmal am Tablet an und gibt es frei – danach
+// kann sie sich dort wieder abmelden, das Tablet bleibt Tresen-Gerät.
+export async function tresenFreigebenAktion(name: string): Promise<{ fehler?: string; geraete?: Geraet[] }> {
+  const sitzung = await inhaberOderFehler()
+  const geraet = await geraetAnlegen({ organisationId: sitzung.organisationId, art: 'tresen', name, erstelltVon: sitzung.kontoId })
+  await geraeteCookieSetzen({ geraetId: geraet.id, organisationId: sitzung.organisationId, art: 'tresen' })
+  return { geraete: await ladeGeraeteDerOrganisation(sitzung.organisationId) }
+}
+
+// Wirkt sofort: jede Anfrage prüft das Gerät gegen die Datenbank.
+export async function geraetEntziehenAktion(geraetId: string): Promise<{ fehler?: string; geraete?: Geraet[] }> {
+  const sitzung = await inhaberOderFehler()
+  if (!(await geraetWiderrufen(sitzung.organisationId, geraetId))) return { fehler: 'Gerät nicht gefunden.' }
+  return { geraete: await ladeGeraeteDerOrganisation(sitzung.organisationId) }
+}
+
+export async function handyKoppelnAktion(mitarbeiterId: string): Promise<{ fehler?: string; link?: string; qrSvg?: string }> {
+  const sitzung = await inhaberOderFehler()
+  const mitarbeiter = await ladeMitarbeiter(mitarbeiterId, sitzung.organisationId)
+  if (!mitarbeiter?.aktiv) return { fehler: 'Mitarbeiter*in nicht gefunden.' }
+  const code = await kopplungscodeErstellen(sitzung.organisationId, mitarbeiterId)
+  const link = await teamUrl(sitzung.organisationId, `/koppeln?code=${encodeURIComponent(code)}`)
+  const qrSvg = await QRCode.toString(link, { type: 'svg', margin: 1, width: 200 })
+  return { link, qrSvg }
+}
+
+// Vom Handy selbst aus: Kopplung aufheben (z. B. Handy wird verkauft).
+export async function geraetEntkoppelnAktion(): Promise<void> {
+  const sitzung = await getBetriebsSitzung()
+  if (sitzung?.art === 'handy') await geraetWiderrufen(sitzung.organisationId, sitzung.geraetId)
+  const cookieStore = await cookies()
+  cookieStore.delete(GERAET_COOKIE_NAME)
+}
+
+// Auf dem Handy der Mitarbeiterin: Code aus dem QR-Link + eigene PIN. Die PIN
+// muss zu genau der Person passen, für die der Code erstellt wurde – sonst
+// könnte, wer einen fremden QR-Code abfotografiert, ihn mit der eigenen PIN
+// für sich nutzen.
+export async function handyKopplungAbschliessenAktion(
+  organisationId: string,
+  code: string,
+  pin: string,
+  geraetName: string
+): Promise<{ fehler?: string }> {
+  const sperrschluessel = `kopplung:${organisationId}`
+  const sperre = await rateLimitPruefen(sperrschluessel)
+  if (!sperre.erlaubt) return { fehler: warteHinweis(sperre.wartenSekunden!) }
+
+  const gefunden = await kopplungscodePruefen(code, organisationId)
+  if (!gefunden) return { fehler: 'Der QR-Code ist abgelaufen oder wurde schon benutzt. Bitte einen neuen erstellen lassen.' }
+
+  const { data } = await getServiceClient()
+    .from('mitarbeiter')
+    .select('pin_hash, aktiv')
+    .eq('id', gefunden.mitarbeiterId)
+    .eq('organisation_id', organisationId)
+    .maybeSingle()
+  if (!data?.aktiv || !(await pinHashPruefen(pin, data.pin_hash as string))) {
+    await rateLimitFehlgeschlagen(sperrschluessel, 5)
+    return { fehler: 'Falscher PIN' }
+  }
+  await rateLimitZuruecksetzen(sperrschluessel)
+  if (!(await kopplungscodeEinloesen(gefunden.id))) return { fehler: 'Der QR-Code wurde gerade schon benutzt.' }
+
+  const geraet = await geraetAnlegen({ organisationId, art: 'handy', name: geraetName || 'Handy', mitarbeiterId: gefunden.mitarbeiterId })
+  await geraeteCookieSetzen({ geraetId: geraet.id, organisationId, art: 'handy' })
+  return {}
+}
+
+// Freischaltung je Tool: welche Module diese Person am Tresen bzw. auf dem
+// Handy sieht. Nur bekannte Mitarbeiter-Module, egal was der Client schickt.
+export async function mitarbeiterModuleSetzenAktion(mitarbeiterId: string, module: ModulSchluessel[]): Promise<{ fehler?: string }> {
+  const sitzung = await inhaberOderFehler()
+  const erlaubt = module.filter((m) => MITARBEITER_MODULE.includes(m))
+  const { data, error } = await getServiceClient()
+    .from('mitarbeiter')
+    .update({ module: erlaubt })
+    .eq('id', mitarbeiterId)
+    .eq('organisation_id', sitzung.organisationId)
+    .select('id')
+  if (error) return { fehler: error.message }
+  if (!data?.length) return { fehler: 'Mitarbeiter*in nicht gefunden.' }
+  return {}
 }

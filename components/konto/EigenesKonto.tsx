@@ -86,7 +86,7 @@ export default function EigenesKonto({ email }: { email: string }) {
       <div className="space-y-2">
         <p className="text-xs font-medium">Auf allen anderen Geräten abmelden</p>
         <button type="button" disabled={pending} onClick={() => ausfuehren(ueberallAbmeldenAktion, 'Alle anderen Geräte sind abgemeldet.')} className={KNOPF}>
-          Abmelden
+          Andere Geräte abmelden
         </button>
       </div>
     </div>

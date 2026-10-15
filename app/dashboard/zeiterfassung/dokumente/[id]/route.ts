@@ -1,11 +1,12 @@
 import { NextRequest } from 'next/server'
-import { getMitarbeiterSitzung } from '@/lib/mitarbeiter/session'
+import { getBetriebsSitzung } from '@/lib/session'
 import { dokumentDatei, ladeDokumentFuerDownload } from '@/lib/zeiterfassung/dokumente'
 
 export async function GET(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const sitzung = await getMitarbeiterSitzung()
+  // Exporte und Personaldokumente: nur Verwaltungskonto.
+  const sitzung = await getBetriebsSitzung()
   if (!sitzung) return new Response('Nicht angemeldet', { status: 401 })
-  if (sitzung.rolle !== 'leitung') return new Response('Keine Berechtigung', { status: 403 })
+  if (sitzung.art !== 'inhaber') return new Response('Keine Berechtigung', { status: 403 })
 
   const { id } = await params
   const dokument = await ladeDokumentFuerDownload(id)

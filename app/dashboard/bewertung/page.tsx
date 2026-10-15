@@ -1,6 +1,5 @@
-import { redirect } from 'next/navigation'
 import AppHeader from '@/components/AppHeader'
-import { getBetriebsSitzung } from '@/lib/session'
+import { seiteFuer } from '@/lib/zugriff'
 import { ladeFreischaltungen } from '@/lib/organisationen'
 import { ladeBewertungsEinstellungen, ladeBewertungsUebersicht } from '@/lib/bewertung/daten'
 import BewertungApp from './BewertungApp'
@@ -8,8 +7,7 @@ import BewertungApp from './BewertungApp'
 export const dynamic = 'force-dynamic'
 
 export default async function BewertungPage() {
-  const sitzung = await getBetriebsSitzung()
-  if (!sitzung) redirect('/team')
+  const sitzung = await seiteFuer('bewertung', { verwaltung: true })
 
   const [freischaltungen, einstellungen, uebersicht] = await Promise.all([
     ladeFreischaltungen(sitzung.organisationId),

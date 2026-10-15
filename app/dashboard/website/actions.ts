@@ -1,6 +1,6 @@
 'use server'
 
-import { getBetriebsSitzung } from '@/lib/session'
+import { verwaltungFuer } from '@/lib/zugriff'
 import {
   bildHochladen,
   bildLoeschen,
@@ -17,10 +17,10 @@ import {
 } from '@/lib/website/daten'
 import type { BildRolle, MenuEintrag, MenuKategorie, WebsiteBild, WebsiteInhalt } from '@/lib/website/types'
 
+// Das ganze Modul ist Verwaltung (Inhalte bzw. Einstellungen des Betriebs),
+// am Tresen und auf Mitarbeiter-Handys nicht erreichbar.
 async function organisationIdOderFehler(): Promise<string> {
-  const sitzung = await getBetriebsSitzung()
-  if (!sitzung) throw new Error('Nicht angemeldet')
-  return sitzung.organisationId
+  return (await verwaltungFuer('website')).organisationId
 }
 
 export async function inhaltSpeichernAktion(inhalt: WebsiteInhalt): Promise<{ fehler?: string }> {

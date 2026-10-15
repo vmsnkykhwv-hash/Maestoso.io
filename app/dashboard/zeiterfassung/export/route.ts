@@ -1,7 +1,8 @@
 import { NextRequest } from 'next/server'
 import * as XLSX from 'xlsx'
 import { getServiceClient } from '@/lib/supabase/server'
-import { getMitarbeiterSitzung } from '@/lib/mitarbeiter/session'
+import { getBetriebsSitzung } from '@/lib/session'
+import { darfModul } from '@/lib/zugriff'
 import { arbeitsminuten } from '@/lib/zeiterfassung/zeit'
 import { EINTRAG_ART_LABEL, type EintragArt } from '@/lib/zeiterfassung/types'
 
@@ -30,8 +31,10 @@ function blattname(name: string): string {
 }
 
 export async function GET(request: NextRequest) {
-  const sitzung = await getMitarbeiterSitzung()
-  if (!sitzung) return new Response('Nicht angemeldet', { status: 401 })
+  const sitzung = await getBetriebsSitzung()
+  if (!sitzung || !darfModul(sitzung, 'zeiterfassung')) return new Response('Nicht angemeldet', { status: 401 })
+  const verwaltung = sitzung.art === 'inhaber'
+  const eigeneId = sitzung.art === 'inhaber' ? null : (sitzung.mitarbeiter?.id ?? null)
 
   const params = request.nextUrl.searchParams
   const von = params.get('von')
@@ -46,7 +49,7 @@ export async function GET(request: NextRequest) {
   // Steuerberater-Export: immer alle (aktiven) Mitarbeiter der Organisation,
   // ein Tabellenblatt pro Person – nur der Leitung zugänglich.
   if (format === 'buchhaltung') {
-    if (sitzung.rolle !== 'leitung') return new Response('Keine Berechtigung', { status: 403 })
+    if (!verwaltung) return new Response('Keine Berechtigung', { status: 403 })
 
     const { data: mitarbeiterListe } = await supabase
       .from('mitarbeiter')
@@ -87,16 +90,18 @@ export async function GET(request: NextRequest) {
 
   const angeforderteIds = params.getAll('mitarbeiterId')
 
-  // Mitarbeiter dürfen nur sich selbst exportieren, Leitung beliebige.
-  const erlaubteIds = sitzung.rolle === 'leitung' ? angeforderteIds : [sitzung.mitarbeiterId]
+  // Mitarbeiter dürfen nur sich selbst exportieren, das Verwaltungskonto
+  // beliebige – aber nur aus dem eigenen Betrieb (Filter unten).
+  const erlaubteIds = verwaltung ? angeforderteIds : eigeneId ? [eigeneId] : []
   if (erlaubteIds.length === 0) return new Response('Keine Mitarbeiter ausgewählt', { status: 400 })
 
   const [{ data: mitarbeiterListe }, { data: eintraege }] = await Promise.all([
-    supabase.from('mitarbeiter').select('id, name').in('id', erlaubteIds),
+    supabase.from('mitarbeiter').select('id, name').in('id', erlaubteIds).eq('organisation_id', sitzung.organisationId),
     supabase
       .from('zeiteintraege')
       .select('mitarbeiter_id, arbeitstag, art, beginn, ende, pause_minuten, notiz')
       .in('mitarbeiter_id', erlaubteIds)
+      .eq('organisation_id', sitzung.organisationId)
       .gte('arbeitstag', von)
       .lte('arbeitstag', bis)
       .order('arbeitstag'),

@@ -34,10 +34,13 @@ function BestellLink({ link }: { link: string }) {
 }
 
 export default function BestellungApp({
+  darfVerwalten,
   freigeschaltet,
   oeffentlicherLink,
   anfangsEinstellungen,
 }: {
+  // Verwaltungskonto (Inhaber*in) – sonst Tresen: keine Einstellungen/Auswertungen.
+  darfVerwalten: boolean
   freigeschaltet: boolean
   // Fertiger Link unter der Domain des Betriebs (lib/url.ts →
   // oeffentlicheUrl), nicht aus window.location gebaut: das Dashboard
@@ -63,10 +66,12 @@ export default function BestellungApp({
           {(
             [
               { key: 'bestellungen', label: 'Bestellungen' },
-              { key: 'auswertung', label: 'Auswertung' },
+              { key: 'auswertung', label: 'Auswertung', verwaltung: true },
               { key: 'einstellungen', label: 'Einstellungen' },
             ] as const
-          ).map((tab) => (
+          )
+            .filter((tab) => darfVerwalten || !('verwaltung' in tab))
+            .map((tab) => (
             <button
               key={tab.key}
               type="button"
@@ -76,14 +81,14 @@ export default function BestellungApp({
                 ansicht === tab.key ? 'bg-accent text-accent-foreground' : 'bg-card text-muted'
               )}
             >
-              {tab.label}
+              {tab.key === 'einstellungen' && !darfVerwalten ? 'Pausen' : tab.label}
             </button>
           ))}
         </div>
 
         {ansicht === 'bestellungen' && <BestellListe />}
         {ansicht === 'auswertung' && <Auswertung />}
-        {ansicht === 'einstellungen' && <BestellEinstellungenForm einstellungen={einstellungen} onGespeichert={setEinstellungen} />}
+        {ansicht === 'einstellungen' && <BestellEinstellungenForm einstellungen={einstellungen} onGespeichert={setEinstellungen} nurPause={!darfVerwalten} />}
       </main>
     </>
   )

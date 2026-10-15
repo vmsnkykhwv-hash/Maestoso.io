@@ -2,9 +2,8 @@
 
 import { useEffect, useMemo, useRef, useState, useTransition } from 'react'
 import Link from 'next/link'
-import { ArrowLeft, Calendar, LogOut } from 'lucide-react'
+import { ArrowLeft, Calendar } from 'lucide-react'
 import DemoBanner from '@/app/dashboard/DemoBanner'
-import { mitarbeiterAbmelden, mitarbeiterAnmelden } from '@/lib/mitarbeiter/aktionen'
 import {
   mitarbeiterAktualisieren,
   mitarbeiterAnlegen,
@@ -29,7 +28,6 @@ import {
 import {
   MITARBEITER_TYP_LABEL,
   type Mitarbeiter,
-  type MitarbeiterRolle,
   type MitarbeiterTyp,
 } from '@/lib/mitarbeiter/types'
 import type { Zeiteintrag } from '@/lib/zeiterfassung/types'
@@ -46,7 +44,7 @@ function periodeFuer(typ: MitarbeiterTyp, anker: string): { von: string; bis: st
   return { von, bis, label: `${formatDatumKurz(von)} – ${formatDatumKurz(bis)}` }
 }
 
-function ZeitenAnsicht({ ziel }: { ziel: Mitarbeiter }) {
+function ZeitenAnsicht({ ziel, nurLesen = false }: { ziel: Mitarbeiter; nurLesen?: boolean }) {
   const [anker, setAnker] = useState(heuteBerlin())
   const [eintraege, setEintraege] = useState<Zeiteintrag[]>([])
   const [minuten, setMinuten] = useState(0)
@@ -116,6 +114,7 @@ function ZeitenAnsicht({ ziel }: { ziel: Mitarbeiter }) {
           tage={tage}
           anfangsEintraege={eintraege}
           onMinutenGeaendert={setMinuten}
+          nurLesen={nurLesen}
         />
       )}
     </div>
@@ -137,7 +136,6 @@ function MitarbeiterVerwaltung({
 
   const [neuerName, setNeuerName] = useState('')
   const [neuerPin, setNeuerPin] = useState('')
-  const [neueRolle, setNeueRolle] = useState<MitarbeiterRolle>('mitarbeiter')
   const [neuerTyp, setNeuerTyp] = useState<MitarbeiterTyp>('vollzeit')
   const [neueGrenze, setNeueGrenze] = useState('')
 
@@ -148,7 +146,9 @@ function MitarbeiterVerwaltung({
       const ergebnis = await mitarbeiterAnlegen({
         name: neuerName,
         pin: neuerPin,
-        rolle: neueRolle,
+        // Leitungsrechte gibt es nur noch über ein Verwaltungskonto
+        // ("Zugänge & Geräte"), nicht über die Mitarbeiter-Rolle.
+        rolle: 'mitarbeiter',
         mitarbeiterTyp: neuerTyp,
         stundenGrenze: Number(neueGrenze.replace(',', '.')) || 0,
       })
@@ -202,14 +202,6 @@ function MitarbeiterVerwaltung({
             className="rounded-lg border border-border bg-background px-2 py-1.5 text-sm"
           />
           <select
-            value={neueRolle}
-            onChange={(e) => setNeueRolle(e.target.value as MitarbeiterRolle)}
-            className="rounded-lg border border-border bg-background px-2 py-1.5 text-sm"
-          >
-            <option value="mitarbeiter">Mitarbeiter</option>
-            <option value="leitung">Leitung</option>
-          </select>
-          <select
             value={neuerTyp}
             onChange={(e) => setNeuerTyp(e.target.value as MitarbeiterTyp)}
             className="rounded-lg border border-border bg-background px-2 py-1.5 text-sm"
@@ -249,14 +241,6 @@ function MitarbeiterVerwaltung({
               </span>
             </div>
             <div className="mt-2 flex flex-wrap items-center gap-2">
-              <select
-                value={m.rolle}
-                onChange={(e) => aktualisieren(m.id, { rolle: e.target.value as MitarbeiterRolle })}
-                className="rounded-lg border border-border bg-background px-2 py-1 text-xs"
-              >
-                <option value="mitarbeiter">Mitarbeiter</option>
-                <option value="leitung">Leitung</option>
-              </select>
               <select
                 value={m.mitarbeiterTyp}
                 onChange={(e) => aktualisieren(m.id, { mitarbeiterTyp: e.target.value as MitarbeiterTyp })}
@@ -325,22 +309,30 @@ function MitarbeiterVerwaltung({
   )
 }
 
-function ExportAnsicht({ mitarbeiter, mitarbeiterListe }: { mitarbeiter: Mitarbeiter; mitarbeiterListe: Mitarbeiter[] }) {
+function ExportAnsicht({
+  verwaltung,
+  eigeneId,
+  mitarbeiterListe,
+}: {
+  verwaltung: boolean
+  eigeneId: string | null
+  mitarbeiterListe: Mitarbeiter[]
+}) {
   const heute = heuteBerlin()
   const [von, setVon] = useState(monatsStart(heute))
   const [bis, setBis] = useState(heute)
   const [ausgewaehlt, setAusgewaehlt] = useState<Set<string>>(
-    new Set(mitarbeiter.rolle === 'leitung' ? [] : [mitarbeiter.id])
+    new Set(verwaltung || !eigeneId ? [] : [eigeneId])
   )
 
   const href = useMemo(() => {
     const params = new URLSearchParams({ von, bis })
-    const ids = mitarbeiter.rolle === 'leitung' ? Array.from(ausgewaehlt) : [mitarbeiter.id]
+    const ids = verwaltung ? Array.from(ausgewaehlt) : eigeneId ? [eigeneId] : []
     for (const id of ids) params.append('mitarbeiterId', id)
     return `/dashboard/zeiterfassung/export?${params.toString()}`
-  }, [von, bis, ausgewaehlt, mitarbeiter])
+  }, [von, bis, ausgewaehlt, verwaltung, eigeneId])
 
-  const keineAuswahl = mitarbeiter.rolle === 'leitung' && ausgewaehlt.size === 0
+  const keineAuswahl = verwaltung && ausgewaehlt.size === 0
 
   function setzeAktuellerMonat() {
     setVon(monatsStart(heute))
@@ -390,7 +382,7 @@ function ExportAnsicht({ mitarbeiter, mitarbeiterListe }: { mitarbeiter: Mitarbe
         />
       </div>
 
-      {mitarbeiter.rolle === 'leitung' && (
+      {verwaltung && (
         <div className="space-y-1.5 rounded-2xl border border-border bg-card p-4">
           <div className="flex items-center justify-between pb-1">
             <span className="text-xs font-semibold">Mitarbeiter</span>
@@ -437,7 +429,7 @@ function ExportAnsicht({ mitarbeiter, mitarbeiterListe }: { mitarbeiter: Mitarbe
         </a>
       )}
 
-      {mitarbeiter.rolle === 'leitung' && <SteuerberaterExport />}
+      {verwaltung && <SteuerberaterExport />}
     </div>
   )
 }
@@ -469,49 +461,39 @@ function SteuerberaterExport() {
   )
 }
 
+// Wer was sieht, entscheidet der Server (page.tsx): das Verwaltungskonto alle
+// Zeiten und das Personal, Mitarbeitende (am Tresen per PIN oder über das
+// gekoppelte Handy) nur die eigenen Zeiten. Die PIN-Anmeldung am Tresen
+// passiert vorher im Dashboard-Rahmen (app/dashboard/TresenAnmeldung.tsx).
 export default function ZeiterfassungApp({
   freigeschaltet,
-  anfangsMitarbeiter,
+  verwaltung,
+  mitarbeiter,
+  nurLesen,
 }: {
   freigeschaltet: boolean
-  anfangsMitarbeiter: Mitarbeiter | null
+  verwaltung: boolean
+  mitarbeiter: Mitarbeiter | null
+  nurLesen: boolean
 }) {
-  const [mitarbeiter, setMitarbeiter] = useState<Mitarbeiter | null>(anfangsMitarbeiter)
-  const [pin, setPin] = useState('')
-  const [loginFehler, setLoginFehler] = useState<string | null>(null)
-  const [loginPending, startLogin] = useTransition()
-
-  const [ansicht, setAnsicht] = useState<Ansicht>('meine-zeiten')
+  const [ansicht, setAnsicht] = useState<Ansicht>(verwaltung ? 'alle-zeiten' : 'meine-zeiten')
   const [mitarbeiterListe, setMitarbeiterListe] = useState<Mitarbeiter[] | null>(null)
 
-  const istLeitung = mitarbeiter?.rolle === 'leitung'
-
   useEffect(() => {
-    if (!istLeitung || mitarbeiterListe) return
+    if (!verwaltung || mitarbeiterListe) return
     mitarbeiterListeLadenAktion().then(setMitarbeiterListe)
-  }, [istLeitung, mitarbeiterListe])
+  }, [verwaltung, mitarbeiterListe])
 
-  function anmelden() {
-    setLoginFehler(null)
-    startLogin(async () => {
-      const ergebnis = await mitarbeiterAnmelden(pin)
-      if (ergebnis.fehler) {
-        setLoginFehler(ergebnis.fehler)
-        return
-      }
-      if (ergebnis.mitarbeiter) {
-        setMitarbeiter(ergebnis.mitarbeiter)
-        setPin('')
-      }
-    })
-  }
-
-  function abmelden() {
-    setMitarbeiter(null)
-    setMitarbeiterListe(null)
-    setAnsicht('meine-zeiten')
-    void mitarbeiterAbmelden()
-  }
+  const tabs: { key: Ansicht; label: string }[] = verwaltung
+    ? [
+        { key: 'alle-zeiten', label: 'Alle Zeiten' },
+        { key: 'mitarbeiter', label: 'Mitarbeiter' },
+        { key: 'export', label: 'Export' },
+      ]
+    : [
+        { key: 'meine-zeiten', label: 'Meine Zeiten' },
+        { key: 'export', label: 'Export' },
+      ]
 
   return (
     <>
@@ -522,106 +504,36 @@ export default function ZeiterfassungApp({
           <ArrowLeft className="h-4 w-4" /> Zurück zu den Tools
         </Link>
 
-        {!mitarbeiter ? (
-          <div className="mx-auto max-w-xs space-y-4 pt-10 text-center">
-            <h2 className="text-base font-semibold">Mit PIN anmelden</h2>
-            <input
-              type="password"
-              inputMode="numeric"
-              value={pin}
-              onChange={(e) => setPin(e.target.value)}
-              className="w-full rounded-xl border border-border bg-card px-3 py-2.5 text-center text-sm"
-              autoFocus
-            />
-            {loginFehler && <p className="text-sm font-medium text-danger">{loginFehler}</p>}
+        <div className="mb-4 flex flex-wrap gap-2">
+          {tabs.map((tab) => (
             <button
+              key={tab.key}
               type="button"
-              onClick={anmelden}
-              disabled={loginPending || pin.length === 0}
-              className="w-full rounded-xl bg-accent py-3 text-sm font-semibold text-accent-foreground disabled:opacity-40"
+              onClick={() => setAnsicht(tab.key)}
+              className={cn(
+                'rounded-full px-3 py-1.5 text-xs font-medium',
+                ansicht === tab.key ? 'bg-accent text-accent-foreground' : 'bg-card text-muted'
+              )}
             >
-              {loginPending ? 'Prüfe…' : 'Anmelden'}
+              {tab.label}
             </button>
-          </div>
-        ) : (
-          <div>
-            <div className="mb-4 flex items-center justify-between">
-              <div className="flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={() => setAnsicht('meine-zeiten')}
-                  className={cn(
-                    'rounded-full px-3 py-1.5 text-xs font-medium',
-                    ansicht === 'meine-zeiten' ? 'bg-accent text-accent-foreground' : 'bg-card text-muted'
-                  )}
-                >
-                  Meine Zeiten
-                </button>
-                {istLeitung && (
-                  <button
-                    type="button"
-                    onClick={() => setAnsicht('alle-zeiten')}
-                    className={cn(
-                      'rounded-full px-3 py-1.5 text-xs font-medium',
-                      ansicht === 'alle-zeiten' ? 'bg-accent text-accent-foreground' : 'bg-card text-muted'
-                    )}
-                  >
-                    Alle Zeiten
-                  </button>
-                )}
-                {istLeitung && (
-                  <button
-                    type="button"
-                    onClick={() => setAnsicht('mitarbeiter')}
-                    className={cn(
-                      'rounded-full px-3 py-1.5 text-xs font-medium',
-                      ansicht === 'mitarbeiter' ? 'bg-accent text-accent-foreground' : 'bg-card text-muted'
-                    )}
-                  >
-                    Mitarbeiter
-                  </button>
-                )}
-                <button
-                  type="button"
-                  onClick={() => setAnsicht('export')}
-                  className={cn(
-                    'rounded-full px-3 py-1.5 text-xs font-medium',
-                    ansicht === 'export' ? 'bg-accent text-accent-foreground' : 'bg-card text-muted'
-                  )}
-                >
-                  Export
-                </button>
-              </div>
+          ))}
+        </div>
 
-              <button type="button" onClick={abmelden} aria-label="Mitarbeiter abmelden" className="flex-none text-muted">
-                <LogOut className="h-4 w-4" />
-              </button>
-            </div>
+        {mitarbeiter && !verwaltung && (
+          <p className="mb-4 text-xs text-muted">
+            {mitarbeiter.name}
+            {nurLesen && ' · Zeiten erfasst du am Tresen-Gerät, hier kannst du sie ansehen.'}
+          </p>
+        )}
 
-            <p className="mb-4 text-sm text-muted">
-              Angemeldet als <span className="font-medium text-foreground">{mitarbeiter.name}</span>
-              {istLeitung && ' (Leitung)'}
-            </p>
-
-            {ansicht === 'meine-zeiten' && <ZeitenAnsicht ziel={mitarbeiter} />}
-
-            {ansicht === 'alle-zeiten' && istLeitung && (
-              <AlleZeitenAnsicht mitarbeiterListe={mitarbeiterListe ?? []} />
-            )}
-
-            {ansicht === 'mitarbeiter' && istLeitung && (
-              <MitarbeiterVerwaltung
-                liste={mitarbeiterListe ?? []}
-                onListeAendern={(liste) => {
-                  setMitarbeiterListe(liste)
-                  const eigenerEintrag = liste.find((m) => m.id === mitarbeiter.id)
-                  if (eigenerEintrag) setMitarbeiter(eigenerEintrag)
-                }}
-              />
-            )}
-
-            {ansicht === 'export' && <ExportAnsicht mitarbeiter={mitarbeiter} mitarbeiterListe={mitarbeiterListe ?? []} />}
-          </div>
+        {ansicht === 'meine-zeiten' && mitarbeiter && <ZeitenAnsicht ziel={mitarbeiter} nurLesen={nurLesen} />}
+        {ansicht === 'alle-zeiten' && verwaltung && <AlleZeitenAnsicht mitarbeiterListe={mitarbeiterListe ?? []} />}
+        {ansicht === 'mitarbeiter' && verwaltung && (
+          <MitarbeiterVerwaltung liste={mitarbeiterListe ?? []} onListeAendern={setMitarbeiterListe} />
+        )}
+        {ansicht === 'export' && (
+          <ExportAnsicht verwaltung={verwaltung} eigeneId={mitarbeiter?.id ?? null} mitarbeiterListe={mitarbeiterListe ?? []} />
         )}
       </main>
     </>

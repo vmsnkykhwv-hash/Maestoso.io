@@ -51,6 +51,10 @@ export default function DatenschutzPlattform() {
         <ul className="list-disc space-y-1 pl-5">
           <li>Sitzungs-Cookies, die dich nach der Anmeldung angemeldet halten (Verwaltungskonto bzw. Mitarbeiter*in),</li>
           <li>ein kurzlebiges Cookie (10 Minuten) für den Schritt zwischen Passwort und Zwei-Faktor-Code,</li>
+          <li>
+            ein Geräte-Cookie, wenn ein Betrieb ein Tresen-Gerät freigibt oder ein Handy koppelt – es enthält nur eine
+            zufällige Geräte-Kennung und gilt bis zu 400 Tage oder bis das Gerät entzogen wird,
+          </li>
           <li>ein Cookie, der sich deine Wahl zwischen hellem und dunklem Design merkt.</li>
         </ul>
         <p>
@@ -63,7 +67,7 @@ export default function DatenschutzPlattform() {
       <Abschnitt titel="Speicherdauer">
         <p>
           Sitzungs-Cookies laufen nach Ablauf der Sitzung bzw. beim Abmelden ab, der Design-Cookie nach einem
-          Jahr. Konto- und Vertragsdaten löschen wir nach Vertragsende, soweit keine gesetzlichen
+          Jahr, das Geräte-Cookie nach spätestens 400 Tagen. Konto- und Vertragsdaten löschen wir nach Vertragsende, soweit keine gesetzlichen
           Aufbewahrungspflichten (bis zu zehn Jahre, § 147 AO, § 257 HGB) entgegenstehen.
         </p>
       </Abschnitt>

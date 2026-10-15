@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { SESSION_COOKIE_NAME, verifySessionToken } from '@/lib/auth'
+import { GERAET_COOKIE_NAME, geraeteTokenPruefen } from '@/lib/geraete/auth'
 import {
   altePlattformAdresse,
   internerPfad,
@@ -79,19 +80,23 @@ export async function proxy(request: NextRequest) {
   if (pathname.startsWith('/api/')) return weiter()
 
   const sitzung = await verifySessionToken(request.cookies.get(SESSION_COOKIE_NAME)?.value)
+  const geraet = await geraeteTokenPruefen(request.cookies.get(GERAET_COOKIE_NAME)?.value)
 
   if (hostOrganisationId) {
     const sitzungDiesesBetriebs = sitzung?.typ === 'inhaber' && sitzung.organisationId === hostOrganisationId
+    const geraetDiesesBetriebs = geraet?.organisationId === hostOrganisationId
     // Bereits angemeldet: /team direkt ins Dashboard. Nur bei normalen
     // Seitenaufrufen – nicht bei der Server Action, die die Anmeldung gerade
     // abschließt, sonst verschwände die Anzeige der Wiederherstellungscodes.
-    if (umleitbar && pathname === '/team' && sitzungDiesesBetriebs) {
+    // Ein Tresen-Gerät darf /team dagegen sehen: dort meldet sich die
+    // Inhaberin an, um es zu verwalten.
+    if (umleitbar && pathname === '/team' && (sitzungDiesesBetriebs || (geraet?.art === 'handy' && geraetDiesesBetriebs))) {
       return NextResponse.redirect(new URL('/dashboard', request.url))
     }
     // Auf der Domain eines Betriebs gilt nur eine Sitzung genau dieses
     // Betriebs – ein Cookie von Betrieb A öffnet nie das Dashboard von B.
     if (pathname.startsWith('/dashboard')) {
-      if (!sitzungDiesesBetriebs) {
+      if (!sitzungDiesesBetriebs && !geraetDiesesBetriebs) {
         return NextResponse.redirect(new URL('/team', request.url))
       }
     }
@@ -125,7 +130,7 @@ export async function proxy(request: NextRequest) {
 
   // Nur in der lokalen Entwicklung erreichbar (im Betrieb läuft das Dashboard
   // unter der Domain des Betriebs, wo der Cookie gesetzt wurde).
-  if (pathname.startsWith('/dashboard') && sitzung?.typ !== 'inhaber') {
+  if (pathname.startsWith('/dashboard') && sitzung?.typ !== 'inhaber' && !geraet) {
     return NextResponse.redirect(new URL('/login', request.url))
   }
 

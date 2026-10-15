@@ -112,20 +112,23 @@ function NeueSchichtForm({
 function SchichtZeile({
   schicht,
   mitarbeiter,
+  verwaltung,
   mitarbeiterNamen,
   nichtVerfuegbareIds,
   onAendern,
   onEntfernen,
 }: {
   schicht: Schicht
-  mitarbeiter: Mitarbeiter
+  // null beim Verwaltungskonto (keine eigenen Schichten)
+  mitarbeiter: Mitarbeiter | null
+  verwaltung: boolean
   mitarbeiterNamen: { id: string; name: string }[]
   nichtVerfuegbareIds: Set<string>
   onAendern: (s: Schicht) => void
   onEntfernen: (id: string) => void
 }) {
-  const istLeitung = mitarbeiter.rolle === 'leitung'
-  const istEigeneSchicht = schicht.mitarbeiterId === mitarbeiter.id
+  const istLeitung = verwaltung
+  const istEigeneSchicht = schicht.mitarbeiterId === mitarbeiter?.id
   const inZukunft = schicht.datum >= heuteBerlin()
   const [tauschPending, startTausch] = useTransition()
   const [tauschFehler, setTauschFehler] = useState<string | null>(null)
@@ -303,9 +306,12 @@ function SchichtZeile({
 
 export default function WochenPlan({
   mitarbeiter,
+  verwaltung,
   mitarbeiterNamen,
 }: {
-  mitarbeiter: Mitarbeiter
+  // null beim Verwaltungskonto (keine eigenen Schichten)
+  mitarbeiter: Mitarbeiter | null
+  verwaltung: boolean
   mitarbeiterNamen: { id: string; name: string }[]
 }) {
   const [anker, setAnker] = useState(heuteBerlin())
@@ -314,7 +320,7 @@ export default function WochenPlan({
   const [neueSchichtTag, setNeueSchichtTag] = useState<string | null>(null)
   const [laden, startLaden] = useTransition()
 
-  const istLeitung = mitarbeiter.rolle === 'leitung'
+  const istLeitung = verwaltung
   const von = useMemo(() => wochenStart(anker), [anker])
   const bis = useMemo(() => datumPlusTage(von, 6), [von])
   const tage = useMemo(() => alleTageZwischen(von, bis), [von, bis])
@@ -374,6 +380,7 @@ export default function WochenPlan({
                       key={schicht.id}
                       schicht={schicht}
                       mitarbeiter={mitarbeiter}
+                      verwaltung={verwaltung}
                       mitarbeiterNamen={mitarbeiterNamen}
                       nichtVerfuegbareIds={nichtVerfuegbareIds}
                       onAendern={(neu) => setSchichten((prev) => prev.map((s) => (s.id === neu.id ? neu : s)))}

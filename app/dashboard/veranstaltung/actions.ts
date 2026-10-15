@@ -1,6 +1,6 @@
 'use server'
 
-import { getBetriebsSitzung } from '@/lib/session'
+import { aktionFuer, verwaltungFuer } from '@/lib/zugriff'
 import {
   ladeVeranstaltungEinstellungen,
   ladeVeranstaltungenFuerOrganisation,
@@ -12,10 +12,15 @@ import {
 import { veranstaltungAbsagen, veranstaltungBestaetigen, veranstaltungLoeschenMitBlockierung } from '@/lib/veranstaltung/aktionen'
 import type { Veranstaltung, VeranstaltungEinstellungen } from '@/lib/veranstaltung/types'
 
+// Tagesgeschäft: Verwaltungskonto oder Tresen-Gerät mit freigeschalteter
+// Mitarbeiterin, nicht vom Handy aus.
 async function organisationIdOderFehler(): Promise<string> {
-  const sitzung = await getBetriebsSitzung()
-  if (!sitzung) throw new Error('Nicht angemeldet')
-  return sitzung.organisationId
+  return (await aktionFuer('veranstaltung', { ohneHandy: true })).organisationId
+}
+
+// Einstellungen und Auswertungen: nur Verwaltungskonto.
+async function verwaltungsIdOderFehler(): Promise<string> {
+  return (await verwaltungFuer('veranstaltung')).organisationId
 }
 
 export async function veranstaltungenLadenAktion(): Promise<Veranstaltung[]> {
@@ -29,7 +34,7 @@ export async function einstellungenLadenAktion(): Promise<VeranstaltungEinstellu
 }
 
 export async function einstellungenSpeichernAktion(einstellungen: VeranstaltungEinstellungen): Promise<{ fehler?: string }> {
-  const organisationId = await organisationIdOderFehler()
+  const organisationId = await verwaltungsIdOderFehler()
   return veranstaltungEinstellungenSpeichern(organisationId, einstellungen)
 }
 
@@ -79,6 +84,6 @@ export async function veranstaltungPreiseSpeichernAktion(
   id: string,
   input: { preis: number | null; anzahlung: number | null }
 ): Promise<{ fehler?: string }> {
-  const organisationId = await organisationIdOderFehler()
+  const organisationId = await verwaltungsIdOderFehler()
   return veranstaltungPreiseSpeichern(id, organisationId, input)
 }

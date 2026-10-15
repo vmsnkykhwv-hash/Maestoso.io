@@ -1,7 +1,7 @@
 'use server'
 
-import { mitarbeiterSitzungOderFehler } from '@/lib/mitarbeiter/session'
-import { ladeMitarbeiterNamen } from '@/lib/mitarbeiter/daten'
+import { ladeMitarbeiter, ladeMitarbeiterNamen } from '@/lib/mitarbeiter/daten'
+import { aktionFuer, verwaltungFuer } from '@/lib/zugriff'
 import { ladeSchichtenFuerZeitraum } from '@/lib/dienstplan/daten'
 import { organisationsName } from '@/lib/tischplan/daten'
 import { heuteBerlin } from '@/lib/datum'
@@ -35,10 +35,21 @@ import { bestellMailSenden } from '@/lib/lager/email'
 import { pruefungFaelligkeit } from '@/lib/lager/regeln'
 import type { Artikel, Bestandspruefung, BestandspruefungEintrag, Lieferant, OffenerBestellEintrag } from '@/lib/lager/types'
 
+// Lieferanten, Artikel, Zuweisen, Bestellen: nur Verwaltungskonto.
 async function leitungOderFehler() {
-  const sitzung = await mitarbeiterSitzungOderFehler()
-  if (sitzung.rolle !== 'leitung') throw new Error('Keine Berechtigung')
-  return sitzung
+  return verwaltungFuer('lager')
+}
+
+// Prüfungen durchführen: am Tresen per PIN (nicht vom Handy), oder das
+// Verwaltungskonto. mitarbeiterId ist beim Verwaltungskonto null.
+async function lagerSitzung(): Promise<{ organisationId: string; verwaltung: boolean; mitarbeiterId: string | null }> {
+  const sitzung = await aktionFuer('lager', { ohneHandy: true })
+  if (sitzung.art === 'inhaber') return { organisationId: sitzung.organisationId, verwaltung: true, mitarbeiterId: null }
+  return { organisationId: sitzung.organisationId, verwaltung: false, mitarbeiterId: sitzung.mitarbeiter?.id ?? null }
+}
+
+function darfPruefung(sitzung: { verwaltung: boolean; mitarbeiterId: string | null }, pruefung: Bestandspruefung): boolean {
+  return sitzung.verwaltung || (!!sitzung.mitarbeiterId && pruefung.zugewiesenerMitarbeiterId === sitzung.mitarbeiterId)
 }
 
 // Legt für jeden aktiven Lieferanten, dessen nächster Bestelltermin
@@ -47,7 +58,7 @@ async function leitungOderFehler() {
 // zwischen heute und dem Bestelltermin als Erste eine Schicht hat. Läuft
 // bei jedem Öffnen des Moduls – kein Cron nötig, siehe 0006_lager.sql.
 export async function pruefungenSicherstellenAktion(): Promise<void> {
-  const sitzung = await mitarbeiterSitzungOderFehler()
+  const sitzung = await lagerSitzung()
   const heute = heuteBerlin()
   const lieferanten = await ladeAktiveLieferanten(sitzung.organisationId)
 
@@ -63,7 +74,8 @@ export async function pruefungenSicherstellenAktion(): Promise<void> {
 }
 
 export async function meinePruefungenLadenAktion(): Promise<Bestandspruefung[]> {
-  const sitzung = await mitarbeiterSitzungOderFehler()
+  const sitzung = await lagerSitzung()
+  if (!sitzung.mitarbeiterId) return []
   return ladeOffenePruefungenFuerMitarbeiter(sitzung.mitarbeiterId)
 }
 
@@ -74,18 +86,18 @@ export async function allePruefungenLadenAktion(): Promise<Bestandspruefung[]> {
 
 export async function pruefungZuweisenAktion(pruefungId: string, mitarbeiterId: string | null): Promise<{ fehler?: string }> {
   const sitzung = await leitungOderFehler()
+  // Die ID kommt vom Client – nur Mitarbeitende des eigenen Betriebs.
+  if (mitarbeiterId && !(await ladeMitarbeiter(mitarbeiterId, sitzung.organisationId))) return { fehler: 'Mitarbeiter nicht gefunden' }
   return pruefungMitarbeiterZuweisen(pruefungId, sitzung.organisationId, mitarbeiterId)
 }
 
 export async function pruefungDetailsLadenAktion(
   pruefungId: string
 ): Promise<{ fehler?: string; pruefung?: Bestandspruefung; artikel?: Artikel[]; eintraege?: BestandspruefungEintrag[] }> {
-  const sitzung = await mitarbeiterSitzungOderFehler()
+  const sitzung = await lagerSitzung()
   const pruefung = await ladePruefung(pruefungId, sitzung.organisationId)
   if (!pruefung) return { fehler: 'Prüfung nicht gefunden' }
-  if (sitzung.rolle !== 'leitung' && pruefung.zugewiesenerMitarbeiterId !== sitzung.mitarbeiterId) {
-    return { fehler: 'Keine Berechtigung' }
-  }
+  if (!darfPruefung(sitzung, pruefung)) return { fehler: 'Keine Berechtigung' }
 
   const [artikel, eintraege] = await Promise.all([
     ladeArtikelFuerLieferant(pruefung.lieferantId),
@@ -101,22 +113,21 @@ export async function eintragSetzenAktion(
   nachbestellen: boolean,
   aktuellerBestand: string
 ): Promise<{ fehler?: string }> {
-  const sitzung = await mitarbeiterSitzungOderFehler()
+  const sitzung = await lagerSitzung()
   const pruefung = await ladePruefung(pruefungId, sitzung.organisationId)
   if (!pruefung) return { fehler: 'Prüfung nicht gefunden' }
-  if (sitzung.rolle !== 'leitung' && pruefung.zugewiesenerMitarbeiterId !== sitzung.mitarbeiterId) {
-    return { fehler: 'Keine Berechtigung' }
-  }
+  if (!darfPruefung(sitzung, pruefung)) return { fehler: 'Keine Berechtigung' }
+  // Nur Artikel des Lieferanten dieser Prüfung – die ID kommt vom Client.
+  const artikel = await ladeArtikelFuerLieferant(pruefung.lieferantId)
+  if (!artikel.some((a) => a.id === artikelId)) return { fehler: 'Artikel nicht gefunden' }
   return eintragSetzen(pruefungId, artikelId, nachbestellen, aktuellerBestand.trim() || null)
 }
 
 export async function pruefungAbschliessenAktion(pruefungId: string): Promise<{ fehler?: string }> {
-  const sitzung = await mitarbeiterSitzungOderFehler()
+  const sitzung = await lagerSitzung()
   const pruefung = await ladePruefung(pruefungId, sitzung.organisationId)
   if (!pruefung) return { fehler: 'Prüfung nicht gefunden' }
-  if (sitzung.rolle !== 'leitung' && pruefung.zugewiesenerMitarbeiterId !== sitzung.mitarbeiterId) {
-    return { fehler: 'Keine Berechtigung' }
-  }
+  if (!darfPruefung(sitzung, pruefung)) return { fehler: 'Keine Berechtigung' }
   return pruefungAlsErledigtMarkieren(pruefungId, sitzung.organisationId)
 }
 
@@ -198,12 +209,12 @@ export async function artikelLoeschenAktion(id: string): Promise<{ fehler?: stri
 }
 
 export async function mitarbeiterNamenLadenAktion(): Promise<{ id: string; name: string }[]> {
-  const sitzung = await mitarbeiterSitzungOderFehler()
+  const sitzung = await lagerSitzung()
   return ladeMitarbeiterNamen(sitzung.organisationId)
 }
 
 export async function lieferantenNamenLadenAktion(): Promise<{ id: string; name: string }[]> {
-  const sitzung = await mitarbeiterSitzungOderFehler()
+  const sitzung = await lagerSitzung()
   return ladeLieferantenNamen(sitzung.organisationId)
 }
 

@@ -1,7 +1,6 @@
-import { redirect } from 'next/navigation'
 import { CalendarCheck, ShoppingBag, PackageSearch, Users } from 'lucide-react'
 import AppHeader from '@/components/AppHeader'
-import { getBetriebsSitzung } from '@/lib/session'
+import { darfModul, seiteFuer } from '@/lib/zugriff'
 import { ladeFreischaltungen } from '@/lib/organisationen'
 import { MODULE } from '@/lib/module'
 import { heuteBerlin } from '@/lib/datum'
@@ -14,8 +13,7 @@ import ModulKachel from './ModulKachel'
 export const dynamic = 'force-dynamic'
 
 export default async function DashboardPage() {
-  const sitzung = await getBetriebsSitzung()
-  if (!sitzung) redirect('/team')
+  const sitzung = await seiteFuer(null)
 
   const heute = heuteBerlin()
   const [freischaltungen, reservierungen, bestellungen, pruefungen, schichten] = await Promise.all([
@@ -63,6 +61,8 @@ export default async function DashboardPage() {
     <div className="flex min-h-dvh flex-col">
       <AppHeader titel="Eure Tools" />
       <main className="mx-auto flex w-full max-w-5xl flex-col gap-10 p-6">
+        {/* Kennzahlen des Betriebs gehören nicht aufs private Handy. */}
+        {sitzung.art !== 'handy' && (
         <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {kennzahlen.map((k) => (
             <div key={k.label} className="flex flex-col gap-2 rounded-2xl border border-border bg-card p-5">
@@ -73,11 +73,12 @@ export default async function DashboardPage() {
             </div>
           ))}
         </section>
+        )}
 
         <section className="flex flex-col gap-4">
           <h2 className="font-display text-lg font-semibold">Eure Module</h2>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            {MODULE.map((modul) => (
+            {MODULE.filter((modul) => darfModul(sitzung, modul.schluessel)).map((modul) => (
               <ModulKachel key={modul.schluessel} modul={modul} freigeschaltet={freischaltungen[modul.schluessel]} />
             ))}
           </div>

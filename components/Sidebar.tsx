@@ -2,13 +2,35 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { KeyRound, LogOut, Scale } from 'lucide-react'
+import { KeyRound, LogOut, Scale, UserRoundX } from 'lucide-react'
 import { logout } from '@/app/actions'
-import { MODULE } from '@/lib/module'
+import { geraetEntkoppelnAktion } from '@/app/dashboard/zugaenge/actions'
+import { mitarbeiterAbmelden } from '@/lib/mitarbeiter/aktionen'
+import { MODULE, type ModulSchluessel } from '@/lib/module'
 import Logo from './Logo'
 
-export default function Sidebar({ organisationName }: { organisationName: string }) {
+// Wer gerade arbeitet – bestimmt, welche Module und welche Fußzeile die
+// Sidebar zeigt (die eigentliche Prüfung passiert serverseitig in
+// lib/zugriff.ts, das hier ist nur die Anzeige).
+export type ShellNutzer =
+  | { art: 'inhaber' }
+  | { art: 'tresen'; name: string; module: ModulSchluessel[] }
+  | { art: 'handy'; name: string; module: ModulSchluessel[] }
+
+const FUSSLINK = 'flex min-h-9 items-center gap-2 px-2 text-xs hover:text-sidebar-foreground'
+
+export default function Sidebar({ organisationName, nutzer }: { organisationName: string; nutzer: ShellNutzer }) {
   const pathname = usePathname()
+  const sichtbar = nutzer.art === 'inhaber' ? MODULE : MODULE.filter((m) => nutzer.module.includes(m.schluessel))
+
+  function fusslink(href: string, Icon: typeof Scale, text: string) {
+    return (
+      <Link href={href} className={`${FUSSLINK} ${pathname.startsWith(href) ? 'font-semibold text-accent' : 'text-sidebar-foreground/70'}`}>
+        <Icon className="h-3.5 w-3.5" />
+        {text}
+      </Link>
+    )
+  }
 
   return (
     <nav className="flex h-full w-64 flex-none flex-col gap-7 bg-sidebar px-4 py-7 text-sidebar-foreground">
@@ -18,7 +40,7 @@ export default function Sidebar({ organisationName }: { organisationName: string
       </Link>
 
       <ul className="flex flex-1 flex-col gap-1 overflow-y-auto">
-        {MODULE.map((modul) => {
+        {sichtbar.map((modul) => {
           const aktiv = pathname.startsWith(modul.href)
           const Icon = modul.icon
           return (
@@ -41,33 +63,50 @@ export default function Sidebar({ organisationName }: { organisationName: string
 
       <div className="flex flex-col gap-2 border-t border-sidebar-foreground/15 pt-4">
         <p className="truncate px-2 text-sm font-semibold">{organisationName}</p>
-        <Link
-          href="/dashboard/rechtliches"
-          className={`flex min-h-9 items-center gap-2 px-2 text-xs hover:text-sidebar-foreground ${
-            pathname.startsWith('/dashboard/rechtliches') ? 'font-semibold text-accent' : 'text-sidebar-foreground/70'
-          }`}
-        >
-          <Scale className="h-3.5 w-3.5" />
-          Impressum & Datenschutz
-        </Link>
-        <Link
-          href="/dashboard/zugaenge"
-          className={`flex min-h-9 items-center gap-2 px-2 text-xs hover:text-sidebar-foreground ${
-            pathname.startsWith('/dashboard/zugaenge') ? 'font-semibold text-accent' : 'text-sidebar-foreground/70'
-          }`}
-        >
-          <KeyRound className="h-3.5 w-3.5" />
-          Zugänge & Geräte
-        </Link>
-        <form action={logout}>
-          <button
-            type="submit"
-            className="flex min-h-9 items-center gap-2 px-2 text-xs text-sidebar-foreground/70 hover:text-sidebar-foreground"
-          >
-            <LogOut className="h-3.5 w-3.5" />
-            Abmelden
-          </button>
-        </form>
+
+        {nutzer.art === 'inhaber' && (
+          <>
+            {fusslink('/dashboard/zugaenge', KeyRound, 'Zugänge & Geräte')}
+            {fusslink('/dashboard/rechtliches', Scale, 'Impressum & Datenschutz')}
+            <form action={logout}>
+              <button type="submit" className={`${FUSSLINK} text-sidebar-foreground/70`}>
+                <LogOut className="h-3.5 w-3.5" />
+                Abmelden
+              </button>
+            </form>
+          </>
+        )}
+
+        {nutzer.art === 'tresen' && (
+          <>
+            <p className="px-2 text-xs text-sidebar-foreground/70">Am Tresen: {nutzer.name}</p>
+            <form action={async () => { await mitarbeiterAbmelden(); window.location.href = '/dashboard' }}>
+              <button type="submit" className={`${FUSSLINK} text-sidebar-foreground/70`}>
+                <LogOut className="h-3.5 w-3.5" />
+                Abmelden / Wechseln
+              </button>
+            </form>
+          </>
+        )}
+
+        {nutzer.art === 'handy' && (
+          <>
+            <p className="px-2 text-xs text-sidebar-foreground/70">{nutzer.name}</p>
+            <form
+              action={async () => {
+                if (!window.confirm('Dieses Handy wirklich entkoppeln? Danach braucht es einen neuen QR-Code.')) return
+                await geraetEntkoppelnAktion()
+                window.location.href = '/team'
+              }}
+            >
+              <button type="submit" className={`${FUSSLINK} text-sidebar-foreground/70`}>
+                <UserRoundX className="h-3.5 w-3.5" />
+                Handy entkoppeln
+              </button>
+            </form>
+          </>
+        )}
+
         {/* Impressum/Datenschutz der Plattform selbst – die Angaben des
             Betriebs pflegt der Link oben. */}
         <div className="flex gap-3 px-2 pt-1 text-[11px] text-sidebar-foreground/50">

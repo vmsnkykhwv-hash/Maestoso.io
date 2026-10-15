@@ -1,22 +1,23 @@
 'use server'
 
-// Mitarbeiter-Anmeldung/-Abmeldung – modulübergreifend (Zeiterfassung und
-// Dienstplan teilen sich dieselbe Mitarbeiter-Sitzung, siehe auth.ts),
-// deshalb hier statt in einem der beiden Module.
+// PIN-Anmeldung am Tresen-Gerät: wer gerade am Tablet arbeitet. Gilt für
+// alle Module gleichzeitig (siehe app/dashboard/TresenAnmeldung.tsx).
 
 import { cookies } from 'next/headers'
 import { getServiceClient } from '@/lib/supabase/server'
 import { getBetriebsSitzung } from '@/lib/session'
 import { pinHashPruefen } from '@/lib/pinHash'
-import { rateLimitFehlgeschlagen, rateLimitPruefen, rateLimitZuruecksetzen } from '@/lib/rateLimit'
+import { rateLimitFehlgeschlagen, rateLimitPruefen, rateLimitZuruecksetzen, warteHinweis } from '@/lib/rateLimit'
 import { createMitarbeiterToken, MITARBEITER_COOKIE_NAME, MITARBEITER_MAX_AGE_SECONDS } from './auth'
-import type { Mitarbeiter, MitarbeiterRolle, MitarbeiterTyp } from './types'
+import { MITARBEITER_SPALTEN, mitarbeiterAusZeile } from './daten'
 
 const SPERRE_AB_VERSUCHEN = 5
 
-export async function mitarbeiterAnmelden(pin: string): Promise<{ fehler?: string; mitarbeiter?: Mitarbeiter }> {
+export async function mitarbeiterAnmelden(pin: string): Promise<{ fehler?: string }> {
   const sitzung = await getBetriebsSitzung()
-  if (!sitzung) throw new Error('Nicht angemeldet')
+  // Nur an einem freigegebenen Tresen-Gerät – sonst ließe sich mit einer
+  // 4-stelligen PIN von irgendwo aus ins Tagesgeschäft.
+  if (sitzung?.art !== 'tresen') return { fehler: 'Die PIN-Anmeldung geht nur am Tresen-Gerät.' }
   const organisationId = sitzung.organisationId
 
   // Gesperrt pro Organisation, nicht pro Mitarbeiter – der 4-stellige PIN
@@ -24,10 +25,7 @@ export async function mitarbeiterAnmelden(pin: string): Promise<{ fehler?: strin
   // Mitarbeiternamen/-code durchprobiert, um die Sperre zu umgehen.
   const sperrschluessel = `mitarbeiter:${organisationId}`
   const sperre = await rateLimitPruefen(sperrschluessel)
-  if (!sperre.erlaubt) {
-    const minuten = Math.ceil(sperre.wartenSekunden! / 60)
-    return { fehler: `Zu viele Fehlversuche. Bitte in ${minuten} Minute${minuten === 1 ? '' : 'n'} erneut versuchen.` }
-  }
+  if (!sperre.erlaubt) return { fehler: warteHinweis(sperre.wartenSekunden!) }
 
   const supabase = getServiceClient()
 
@@ -38,7 +36,7 @@ export async function mitarbeiterAnmelden(pin: string): Promise<{ fehler?: strin
   // unproblematisch schnell.
   const { data } = await supabase
     .from('mitarbeiter')
-    .select('id, name, rolle, mitarbeiter_typ, stunden_grenze, aktiv, pin_hash')
+    .select(`${MITARBEITER_SPALTEN}, pin_hash`)
     .eq('organisation_id', organisationId)
     .eq('aktiv', true)
 
@@ -56,13 +54,9 @@ export async function mitarbeiterAnmelden(pin: string): Promise<{ fehler?: strin
   }
 
   await rateLimitZuruecksetzen(sperrschluessel)
+  const mitarbeiter = mitarbeiterAusZeile(treffer)
 
-  const token = await createMitarbeiterToken({
-    organisationId,
-    mitarbeiterId: treffer.id as string,
-    rolle: treffer.rolle as MitarbeiterRolle,
-  })
-
+  const token = await createMitarbeiterToken({ organisationId, mitarbeiterId: mitarbeiter.id, rolle: mitarbeiter.rolle })
   const cookieStore = await cookies()
   cookieStore.set(MITARBEITER_COOKIE_NAME, token, {
     httpOnly: true,
@@ -71,17 +65,7 @@ export async function mitarbeiterAnmelden(pin: string): Promise<{ fehler?: strin
     maxAge: MITARBEITER_MAX_AGE_SECONDS,
     path: '/',
   })
-
-  return {
-    mitarbeiter: {
-      id: treffer.id as string,
-      name: treffer.name as string,
-      rolle: treffer.rolle as MitarbeiterRolle,
-      mitarbeiterTyp: treffer.mitarbeiter_typ as MitarbeiterTyp,
-      stundenGrenze: Number(treffer.stunden_grenze),
-      aktiv: treffer.aktiv as boolean,
-    },
-  }
+  return {}
 }
 
 export async function mitarbeiterAbmelden() {

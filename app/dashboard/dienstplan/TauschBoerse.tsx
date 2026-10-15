@@ -14,9 +14,12 @@ import type { Mitarbeiter } from '@/lib/mitarbeiter/types'
 
 export default function TauschBoerse({
   mitarbeiter,
+  verwaltung,
   mitarbeiterNamen,
 }: {
-  mitarbeiter: Mitarbeiter
+  // null beim Verwaltungskonto (keine eigenen Schichten)
+  mitarbeiter: Mitarbeiter | null
+  verwaltung: boolean
   mitarbeiterNamen: { id: string; name: string }[]
 }) {
   const [anfragen, setAnfragen] = useState<TauschAnfrageMitSchicht[]>([])
@@ -76,7 +79,7 @@ export default function TauschBoerse({
     })
   }
 
-  const istLeitung = mitarbeiter.rolle === 'leitung'
+  const istLeitung = verwaltung
 
   return (
     <div>
@@ -95,7 +98,7 @@ export default function TauschBoerse({
       ) : (
         <ul className="space-y-2">
           {anfragen.map((a) => {
-            const istEigene = a.anfragenderMitarbeiterId === mitarbeiter.id
+            const istEigene = a.anfragenderMitarbeiterId === mitarbeiter?.id
             const wartetAufBestaetigung = a.status === 'angenommen'
             return (
               <li key={a.id} className="rounded-2xl border border-border bg-card p-3">
@@ -111,7 +114,7 @@ export default function TauschBoerse({
                 )}
 
                 <div className="mt-2 flex flex-wrap gap-2">
-                  {!istEigene && !wartetAufBestaetigung && (
+                  {!istEigene && !wartetAufBestaetigung && mitarbeiter && (
                     <button
                       type="button"
                       onClick={() => annehmen(a.id)}

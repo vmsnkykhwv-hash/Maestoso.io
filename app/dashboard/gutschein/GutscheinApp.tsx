@@ -297,11 +297,14 @@ function PaypalEinstellungenCard({ anfangswert }: { anfangswert: PaypalAnfangswe
 }
 
 export default function GutscheinApp({
+  darfVerwalten,
   freigeschaltet,
   anfangsEinstellungen,
   anfangsGutscheine,
   anfangsPaypal,
 }: {
+  // Verwaltungskonto – sonst Tresen: nur Liste/Einlösen, keine Einstellungen.
+  darfVerwalten: boolean
   freigeschaltet: boolean
   anfangsEinstellungen: GutscheinEinstellungen
   anfangsGutscheine: Gutschein[]
@@ -327,23 +330,27 @@ export default function GutscheinApp({
           >
             Gutscheine
           </button>
-          <button
-            type="button"
-            onClick={() => setTab('verbindlichkeiten')}
-            className={cn(
-              'rounded-full px-3 py-1.5 text-xs font-medium',
-              tab === 'verbindlichkeiten' ? 'bg-accent text-accent-foreground' : 'bg-card text-muted'
-            )}
-          >
-            Verbindlichkeiten
-          </button>
-          <button
-            type="button"
-            onClick={() => setTab('einstellungen')}
-            className={cn('rounded-full px-3 py-1.5 text-xs font-medium', tab === 'einstellungen' ? 'bg-accent text-accent-foreground' : 'bg-card text-muted')}
-          >
-            Einstellungen
-          </button>
+          {darfVerwalten && (
+            <>
+            <button
+              type="button"
+              onClick={() => setTab('verbindlichkeiten')}
+              className={cn(
+                'rounded-full px-3 py-1.5 text-xs font-medium',
+                tab === 'verbindlichkeiten' ? 'bg-accent text-accent-foreground' : 'bg-card text-muted'
+              )}
+            >
+              Verbindlichkeiten
+            </button>
+            <button
+              type="button"
+              onClick={() => setTab('einstellungen')}
+              className={cn('rounded-full px-3 py-1.5 text-xs font-medium', tab === 'einstellungen' ? 'bg-accent text-accent-foreground' : 'bg-card text-muted')}
+            >
+              Einstellungen
+            </button>
+            </>
+          )}
         </div>
 
         {tab === 'gutscheine' && <GutscheinListe gutscheine={gutscheine} setGutscheine={setGutscheine} />}

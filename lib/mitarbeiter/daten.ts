@@ -1,26 +1,36 @@
 import { pinHashPruefen } from '@/lib/pinHash'
 import { getServiceClient } from '@/lib/supabase/server'
-import type { Mitarbeiter } from './types'
+import type { ModulSchluessel } from '@/lib/module'
+import { MITARBEITER_MODULE, type Mitarbeiter } from './types'
+
+export const MITARBEITER_SPALTEN = 'id, name, rolle, mitarbeiter_typ, stunden_grenze, aktiv, module'
+
+export function mitarbeiterAusZeile(m: Record<string, unknown>): Mitarbeiter {
+  return {
+    id: m.id as string,
+    name: m.name as string,
+    rolle: m.rolle as Mitarbeiter['rolle'],
+    mitarbeiterTyp: m.mitarbeiter_typ as Mitarbeiter['mitarbeiterTyp'],
+    stundenGrenze: Number(m.stunden_grenze),
+    aktiv: m.aktiv as boolean,
+    // Nur bekannte Mitarbeiter-Module – ein manipulierter Eintrag wie
+    // 'website' in der Datenbank gibt trotzdem keinen Zugriff.
+    module: ((m.module as string[] | null) ?? []).filter((x): x is ModulSchluessel =>
+      (MITARBEITER_MODULE as string[]).includes(x)
+    ),
+  }
+}
 
 export async function ladeMitarbeiter(mitarbeiterId: string, organisationId: string): Promise<Mitarbeiter | null> {
   const supabase = getServiceClient()
   const { data } = await supabase
     .from('mitarbeiter')
-    .select('id, name, rolle, mitarbeiter_typ, stunden_grenze, aktiv')
+    .select(MITARBEITER_SPALTEN)
     .eq('id', mitarbeiterId)
     .eq('organisation_id', organisationId)
     .maybeSingle()
 
-  if (!data) return null
-
-  return {
-    id: data.id as string,
-    name: data.name as string,
-    rolle: data.rolle as Mitarbeiter['rolle'],
-    mitarbeiterTyp: data.mitarbeiter_typ as Mitarbeiter['mitarbeiterTyp'],
-    stundenGrenze: Number(data.stunden_grenze),
-    aktiv: data.aktiv as boolean,
-  }
+  return data ? mitarbeiterAusZeile(data) : null
 }
 
 // Minimale, nicht sensible Mitarbeiterliste (nur Name) – für Ansichten, die
@@ -43,18 +53,11 @@ export async function ladeMitarbeiterListe(organisationId: string): Promise<Mita
   const supabase = getServiceClient()
   const { data } = await supabase
     .from('mitarbeiter')
-    .select('id, name, rolle, mitarbeiter_typ, stunden_grenze, aktiv')
+    .select(MITARBEITER_SPALTEN)
     .eq('organisation_id', organisationId)
     .order('name')
 
-  return (data ?? []).map((m) => ({
-    id: m.id as string,
-    name: m.name as string,
-    rolle: m.rolle as Mitarbeiter['rolle'],
-    mitarbeiterTyp: m.mitarbeiter_typ as Mitarbeiter['mitarbeiterTyp'],
-    stundenGrenze: Number(m.stunden_grenze),
-    aktiv: m.aktiv as boolean,
-  }))
+  return (data ?? []).map(mitarbeiterAusZeile)
 }
 
 // Die Mitarbeiter-Anmeldung erkennt die Person allein an der PIN (siehe

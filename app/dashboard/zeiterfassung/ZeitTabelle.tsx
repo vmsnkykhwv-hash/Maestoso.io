@@ -44,7 +44,11 @@ export default function ZeitTabelle({
   tage,
   anfangsEintraege,
   onMinutenGeaendert,
+  nurLesen = false,
 }: {
+  // Auf dem gekoppelten Handy: eigene Zeiten nur ansehen, erfasst wird am
+  // Tresen (die Server Actions lehnen Schreiben vom Handy ohnehin ab).
+  nurLesen?: boolean
   mitarbeiterId: string
   tage: string[]
   anfangsEintraege: Zeiteintrag[]
@@ -117,7 +121,7 @@ export default function ZeitTabelle({
   }
 
   return (
-    <div className="space-y-2">
+    <fieldset disabled={nurLesen} className="space-y-2">
       {tage.map((tag) => {
         const zeile = zeilen[tag]
         if (!zeile) return null
@@ -177,7 +181,7 @@ export default function ZeitTabelle({
 
             {tagFehler && <p className="mt-2 text-xs font-medium text-danger">{tagFehler}</p>}
 
-            {dirty && (
+            {dirty && !nurLesen && (
               <button
                 type="button"
                 disabled={pending && speicherndTag === tag}
@@ -191,6 +195,6 @@ export default function ZeitTabelle({
           </div>
         )
       })}
-    </div>
+    </fieldset>
   )
 }

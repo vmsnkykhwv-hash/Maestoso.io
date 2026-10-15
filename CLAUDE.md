@@ -31,7 +31,9 @@ Die vollständige Datei-Karte steht in `README.md` → "Aufbau". Kurzfassung:
 | Thema | Datei/Ordner |
 |---|---|
 | Module registrieren (Sidebar, Freischaltung) | `lib/module.ts` |
-| Login/Session (Organisation, Plattform-Admin, Mitarbeiter) | `lib/auth.ts`, `lib/mitarbeiter/auth.ts` |
+| Login/Session (Konten mit 2FA, Tresen-Gerät, Handy, Mitarbeiter-PIN) | `lib/konten/`, `lib/session.ts`, `lib/geraete/`, `lib/mitarbeiter/auth.ts` |
+| Rechte (wer darf welches Modul/welche Aktion) | `lib/zugriff.ts` |
+| Gästepfade auf der Domain eines Betriebs | `lib/gaestePfade.ts` |
 | PIN-Hashing | `lib/pinHash.ts` (nur Node, nie Edge – siehe unten) |
 | Routenschutz | `proxy.ts` |
 | Rate-Limiting | `lib/rateLimit.ts` |
@@ -59,6 +61,11 @@ Nicht wiederholen:
 - **`svix`s `Webhook.verify()` gibt `undefined` zurück, nicht die
   Payload.** Der Aufruf wirft nur bei ungültiger Signatur – das
   eigentliche Payload kommt separat per `JSON.parse(body)` danach.
+- **Jede Server Action prüft ihre Rechte selbst** (`lib/zugriff.ts`:
+  `aktionFuer`/`verwaltungFuer`). Ein ausgeblendeter Tab schützt nichts –
+  Actions sind ohne die Seite direkt aufrufbar. Und jede vom Client
+  geschickte ID (Mitarbeiter, Artikel, Kategorie …) muss gegen die eigene
+  Organisation geprüft werden, nicht nur die ID des Datensatzes selbst.
 - **Keine RLS-Policies – mit Absicht.** Supabase-Row-Level-Security ist
   aktiviert, aber ohne Policies: Zugriff läuft ausschließlich über den
   Service-Role-Key serverseitig, mit manueller `organisation_id`-Prüfung

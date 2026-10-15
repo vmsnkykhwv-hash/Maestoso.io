@@ -1,6 +1,5 @@
-import { redirect } from 'next/navigation'
 import AppHeader from '@/components/AppHeader'
-import { getBetriebsSitzung } from '@/lib/session'
+import { istVerwaltung, seiteFuer } from '@/lib/zugriff'
 import { ladeFreischaltungen } from '@/lib/organisationen'
 import { ladeVeranstaltungEinstellungen, ladeVeranstaltungenFuerOrganisation } from '@/lib/veranstaltung/daten'
 import VeranstaltungApp from './VeranstaltungApp'
@@ -9,8 +8,7 @@ import { oeffentlicheUrl } from '@/lib/url'
 export const dynamic = 'force-dynamic'
 
 export default async function VeranstaltungPage() {
-  const sitzung = await getBetriebsSitzung()
-  if (!sitzung) redirect('/team')
+  const sitzung = await seiteFuer('veranstaltung', { ohneHandy: true })
 
   const [freischaltungen, einstellungen, veranstaltungen] = await Promise.all([
     ladeFreischaltungen(sitzung.organisationId),
@@ -22,6 +20,7 @@ export default async function VeranstaltungPage() {
     <div className="flex min-h-dvh flex-col">
       <AppHeader titel="Veranstaltungsplanung" />
       <VeranstaltungApp
+        darfVerwalten={istVerwaltung(sitzung)}
         freigeschaltet={freischaltungen.veranstaltung}
         oeffentlicherLink={await oeffentlicheUrl(sitzung.organisationId, '/veranstaltung')}
         anfangsEinstellungen={einstellungen}

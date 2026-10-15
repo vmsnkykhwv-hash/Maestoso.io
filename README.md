@@ -28,6 +28,28 @@ keine aktive Marke in Software-relevanten Klassen) und die Domain
   Konto, kann weitere Verwaltungskonten einladen („Zugänge & Geräte“ im
   Dashboard), auch von zu Hause. Einen geteilten Zugangscode gibt es nicht
   mehr – die Adresse sagt, um welchen Betrieb es geht.
+- **Tresen-Gerät**: Tablet/Kasse im Laden, einmal von einem Verwaltungskonto
+  freigegeben („Zugänge & Geräte“ → „Dieses Gerät als Tresen freigeben“),
+  danach dauerhaft angemeldet (Cookie `maestoso_geraet`, Tabelle `geraete`).
+  Benutzbar erst nach Mitarbeiter-PIN, nach 10 Minuten ohne Eingabe wieder
+  gesperrt. Nur hier laufen Tagesgeschäft (Reservierungen, Bestellungen inkl.
+  Schnellpause, Gutscheine einlösen, Veranstaltungen, Lager-Prüfungen) und das
+  Erfassen der Arbeitszeit.
+- **Mitarbeiter-Handy**: per QR-Code (15 Minuten gültig) + eigener PIN
+  gekoppelt. Sieht nur Dienstplan (wer arbeitet wann), eigene Verfügbarkeit,
+  Tauschbörse und die eigenen Zeiten zum Ansehen. Entkoppeln vom Handy selbst
+  oder Entziehen durch die Inhaberin wirkt sofort.
+- **Freischaltung je Tool**: welche Module eine Mitarbeiterin am Tresen bzw.
+  auf dem Handy sieht (`mitarbeiter.module`, „Zugänge & Geräte“). Website und
+  Bewertungsanfragen sind reine Verwaltung.
+- **Nur Verwaltungskonto**: Einstellungen, Auswertungen, Personal (anlegen,
+  PIN, Dokumente), Dienstplan planen/Tausch bestätigen, Lieferanten/Artikel/
+  Bestellen, Exporte, Website, Bewertungen, Rechtliches, Zugänge. Die
+  Mitarbeiter-Rolle „Leitung“ gibt keine Rechte mehr.
+- Prüfung zentral in `lib/zugriff.ts` (`seiteFuer`, `aktionFuer`,
+  `verwaltungFuer`) auf Basis von `getBetriebsSitzung()` (`lib/session.ts`) –
+  jede Seite und jede Server Action prüft selbst, ausgeblendete Knöpfe allein
+  schützen nichts. Migration `0025`.
 - Ohne zweiten Faktor gibt es keine Sitzung, auch nicht beim ersten Mal
   (2FA-Einrichtung ist Teil der Anmeldung). Wiederherstellungscodes für ein
   verlorenes Handy, „Passwort vergessen“ per Mail-Link, Passwortänderung

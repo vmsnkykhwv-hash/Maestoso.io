@@ -1,6 +1,6 @@
 'use server'
 
-import { getBetriebsSitzung } from '@/lib/session'
+import { verwaltungFuer } from '@/lib/zugriff'
 import {
   bewertungsEinstellungenSpeichern,
   ladeBewertungsEinstellungen,
@@ -12,10 +12,10 @@ import {
 import { berechneKlickrate, berechneGoogleTrend, type KlickrateAuswertung, type GoogleTrendAuswertung, type GoogleSnapshot } from '@/lib/bewertung/auswertung'
 import type { BewertungsEinstellungen, BewertungsListenEintrag } from '@/lib/bewertung/types'
 
+// Das ganze Modul ist Verwaltung (Inhalte bzw. Einstellungen des Betriebs),
+// am Tresen und auf Mitarbeiter-Handys nicht erreichbar.
 async function organisationIdOderFehler(): Promise<string> {
-  const sitzung = await getBetriebsSitzung()
-  if (!sitzung) throw new Error('Nicht angemeldet')
-  return sitzung.organisationId
+  return (await verwaltungFuer('bewertung')).organisationId
 }
 
 export async function einstellungenLadenAktion(): Promise<BewertungsEinstellungen> {

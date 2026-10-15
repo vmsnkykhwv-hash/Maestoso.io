@@ -1,14 +1,12 @@
-import { redirect } from 'next/navigation'
 import AppHeader from '@/components/AppHeader'
 import { ladeRechtlicheAngaben } from '@/lib/rechtliches/daten'
-import { getBetriebsSitzung } from '@/lib/session'
+import { seiteFuer } from '@/lib/zugriff'
 import RechtlichesFormular from './RechtlichesFormular'
 
 export const dynamic = 'force-dynamic'
 
 export default async function RechtlichesPage() {
-  const sitzung = await getBetriebsSitzung()
-  if (!sitzung) redirect('/team')
+  const sitzung = await seiteFuer(null, { verwaltung: true })
 
   const angaben = await ladeRechtlicheAngaben(sitzung.organisationId)
 

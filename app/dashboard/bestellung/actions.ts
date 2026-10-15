@@ -1,6 +1,6 @@
 'use server'
 
-import { getBetriebsSitzung } from '@/lib/session'
+import { aktionFuer, verwaltungFuer } from '@/lib/zugriff'
 import {
   bestellEinstellungenSpeichern,
   bestellungenGesehenMarkieren,
@@ -19,10 +19,15 @@ import { bewertungsanfragePlanenFuerBestellung, bewertungsanfrageStornierenFuerB
 import { berechneBestellAnalyse, type BestellungAuswertung } from '@/lib/bestellung/auswertung'
 import type { Bestellung, BestellEinstellungen, BestellKanal, BestellStatus } from '@/lib/bestellung/types'
 
+// Tagesgeschäft: Verwaltungskonto oder Tresen-Gerät mit freigeschalteter
+// Mitarbeiterin, nicht vom Handy aus.
 async function organisationIdOderFehler(): Promise<string> {
-  const sitzung = await getBetriebsSitzung()
-  if (!sitzung) throw new Error('Nicht angemeldet')
-  return sitzung.organisationId
+  return (await aktionFuer('bestellung', { ohneHandy: true })).organisationId
+}
+
+// Einstellungen und Auswertungen: nur Verwaltungskonto.
+async function verwaltungsIdOderFehler(): Promise<string> {
+  return (await verwaltungFuer('bestellung')).organisationId
 }
 
 export async function einstellungenLadenAktion(): Promise<BestellEinstellungen> {
@@ -33,7 +38,7 @@ export async function einstellungenLadenAktion(): Promise<BestellEinstellungen> 
 export async function einstellungenSpeichernAktion(
   einstellungen: Omit<BestellEinstellungen, 'abholungPausiertBis' | 'lieferungPausiertBis' | 'abholungPauseGrund' | 'lieferungPauseGrund'>
 ): Promise<{ fehler?: string }> {
-  const organisationId = await organisationIdOderFehler()
+  const organisationId = await verwaltungsIdOderFehler()
   return bestellEinstellungenSpeichern(organisationId, einstellungen)
 }
 
@@ -96,7 +101,7 @@ export async function bestellungStatusAendernAktion(id: string, status: BestellS
 }
 
 export async function bestellAnalyseLadenAktion(von: string, bis: string): Promise<BestellungAuswertung> {
-  const organisationId = await organisationIdOderFehler()
+  const organisationId = await verwaltungsIdOderFehler()
   const bestellungen = await ladeBestellungenSchlankFuerZeitraum(organisationId, von, bis)
   return berechneBestellAnalyse(bestellungen)
 }
