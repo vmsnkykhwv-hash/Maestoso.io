@@ -637,6 +637,14 @@ Mal unter einem Advisory-Lock direkt vor dem Insert laufen lassen (siehe
 - `NEXT_PUBLIC_PLATTFORM_DOMAIN` – eure eigene Plattform-Domain (z. B.
   `maestoso.io`), ohne Protokoll/Subdomain. Lokal leer lassen – ohne
   diese Variable ist das Domain-Routing fürs Website-Modul inaktiv.
+- `VERCEL_API_TOKEN` / `VERCEL_PROJECT_ID` / `VERCEL_TEAM_ID` – optional,
+  damit der Plattform-Admin Kunden-Domains direkt aus Maestoso im
+  Vercel-Projekt anlegen, prüfen und entfernen kann (`lib/vercel/domains.ts`).
+  Token unter Vercel → Account Settings → Tokens (Scope: das Team des
+  Projekts), Projekt-ID unter Project Settings → General, Team-ID unter Team
+  Settings (leer lassen bei einem persönlichen Account). Ohne diese Werte
+  wird die Domain nur gespeichert und muss in Vercel von Hand eingetragen
+  werden.
 
 ### 3. Lokal starten
 
@@ -659,12 +667,17 @@ anmelden.
   `maestoso.io` und `*.maestoso.io`), damit jede
   Organisations-Subdomain automatisch funktioniert, sobald
   `NEXT_PUBLIC_PLATTFORM_DOMAIN` gesetzt ist.
-- Für eine eigene Kunden-Domain (z. B. `musterbetrieb.de`): im Plattform-Admin
-  oder im Website-Modul der Organisation eintragen, danach dieselbe Domain
-  zusätzlich im Vercel-Projekt hinzufügen (Vercel zeigt dort den nötigen
-  DNS-Eintrag an, den der Kunde bei seinem Domain-Anbieter setzt) – erst
-  dann funktioniert sie, bis dahin bleibt die Subdomain die erreichbare
-  Adresse.
+- Eigene Kunden-Domain (z. B. `musterbetrieb.de`): nur im Plattform-Admin
+  bei der Organisation → „Verbinden“. Das trägt sie in der Datenbank und
+  (mit den `VERCEL_*`-Variablen) im Vercel-Projekt ein, optional mit
+  `www.`-Weiterleitung. „Status prüfen“ zeigt die noch fehlenden
+  DNS-Einträge (A/CNAME, ggf. TXT-Nachweis). Die Anleitungen für die drei
+  Wege – Domain beim bisherigen Anbieter lassen, zu Vercel umziehen (Auth-Code,
+  MX-Einträge übernehmen!), neu bei Vercel kaufen – stehen direkt im Admin
+  (`app/plattform-admin/DomainVerwaltung.tsx`). Kauf und Umzug selbst laufen
+  bewusst über die Vercel-Oberfläche: beides kostet Geld bzw. ist nicht
+  einfach rückgängig zu machen. Beim Löschen einer Organisation wird ihre
+  Domain auch aus Vercel entfernt.
 
 ## Aufbau
 
@@ -759,7 +772,8 @@ anmelden.
   (Hero/Über uns/Tagesmenü/Kontakt), `SpeisekarteVerwaltung.tsx`
   (Kategorien und Gerichte, inkl. Ein-/Ausblenden ohne Löschen),
   `BilderVerwaltung.tsx` (Hero-Bild, Galerie bis 12 Bilder),
-  `DomainEinstellungen.tsx` (Subdomain-Anzeige, eigene Domain eintragen).
+  `DomainEinstellungen.tsx` (Subdomain und eigene Domain, nur Anzeige –
+  eingetragen wird im Plattform-Admin).
 - `app/website/[organisationId]` – die öffentliche Website selbst: Hero,
   Über uns, Tagesmenü, Speisekarte, Öffnungszeiten (aus dem
   Tischplan-Modul), eingebettetes `<BuchungsFormular>` (dasselbe wie unter

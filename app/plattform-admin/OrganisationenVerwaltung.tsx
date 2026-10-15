@@ -2,7 +2,8 @@
 
 import { useState, useTransition } from 'react'
 import { Trash2 } from 'lucide-react'
-import { customDomainSpeichernAktionAdmin, modulFreischaltenUmschalten, organisationAnlegen, organisationLoeschen } from './actions'
+import { modulFreischaltenUmschalten, organisationAnlegen, organisationLoeschen } from './actions'
+import DomainVerwaltung from './DomainVerwaltung'
 import { MODULE, type ModulSchluessel } from '@/lib/module'
 import type { OrganisationMitFreischaltungen } from '@/lib/organisationen'
 import { cn } from '@/lib/utils'
@@ -51,15 +52,6 @@ export default function OrganisationenVerwaltung({
     setOrganisationen((prev) => prev.filter((o) => o.id !== organisationId))
     setLoeschenBestaetigenId(null)
     startTransition(() => organisationLoeschen(organisationId))
-  }
-
-  function customDomainSpeichern(organisationId: string, wert: string) {
-    setOrganisationen((prev) => prev.map((o) => (o.id === organisationId ? { ...o, customDomain: wert || null } : o)))
-    setFehler(null)
-    startTransition(async () => {
-      const ergebnis = await customDomainSpeichernAktionAdmin(organisationId, wert)
-      if (ergebnis.fehler) setFehler(ergebnis.fehler)
-    })
   }
 
   return (
@@ -131,15 +123,7 @@ export default function OrganisationenVerwaltung({
             </div>
 
             <div className="mt-4">
-              <label className="text-xs font-medium text-muted">
-                Eigene Domain (nach Freischaltung hier auch im Hosting-Projekt eintragen, siehe README)
-                <input
-                  defaultValue={o.customDomain ?? ''}
-                  onBlur={(e) => customDomainSpeichern(o.id, e.target.value.trim())}
-                  placeholder="z. B. musterbetrieb.de"
-                  className="mt-1 w-full rounded-lg border border-border bg-background px-2.5 py-1.5 text-sm font-normal"
-                />
-              </label>
+              <DomainVerwaltung organisationId={o.id} anfangsDomain={o.customDomain} />
             </div>
 
             <div className="mt-3 flex flex-wrap gap-2">

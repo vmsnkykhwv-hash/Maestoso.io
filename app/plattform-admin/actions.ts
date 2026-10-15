@@ -8,6 +8,7 @@ import { getSitzung } from '@/lib/session'
 import { getServiceClient } from '@/lib/supabase/server'
 import { MODULE, type ModulSchluessel } from '@/lib/module'
 import { subdomainVorschlagen, type OrganisationMitFreischaltungen } from '@/lib/organisationen'
+import { domainEntfernen, domainHinzufuegen, domainStatusLaden, vercelKonfiguriert, type DomainStatus } from '@/lib/vercel/domains'
 
 // Server Actions sind eigenständig aufrufbare Endpunkte (über die
 // Action-ID, nicht über den Seitenpfad) – die Weiterleitung in proxy.ts
@@ -98,37 +99,93 @@ export async function organisationAnlegen(
   return { organisation }
 }
 
-// Eigene Domain eines Kunden eintragen/ändern – der eigentliche Transfer
-// (DNS-Eintrag beim Kunden, Domain im Hosting-Projekt freischalten) bleibt
-// ein manueller Schritt außerhalb der Plattform, siehe README.
-export async function customDomainSpeichernAktionAdmin(
-  organisationId: string,
-  customDomain: string
-): Promise<{ fehler?: string }> {
-  await plattformAdminOderFehler()
-
-  const domain = customDomain.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/.*$/, '')
-  if (domain && !/^(?!-)[a-z0-9-]+(\.[a-z0-9-]+)+$/.test(domain)) {
+// Eigene Domain eines Kunden: ausschließlich hier, nie durch die
+// Organisation selbst (sonst könnte ein Betrieb die Domain eines anderen
+// beanspruchen). Eingetragen wird gleichzeitig in der Datenbank (für das
+// Routing in proxy.ts) und im Vercel-Projekt (damit Vercel die Domain
+// überhaupt ausliefert und ein Zertifikat ausstellt).
+function domainNormalisieren(eingabe: string): { domain?: string; fehler?: string } {
+  const domain = eingabe
+    .trim()
+    .toLowerCase()
+    .replace(/^https?:\/\//, '')
+    .replace(/\/.*$/, '')
+    .replace(/^www\./, '')
+  if (!/^(?!-)[a-z0-9-]+(\.[a-z0-9-]+)+$/.test(domain)) {
     return { fehler: 'Bitte nur den Domainnamen angeben, z. B. musterbetrieb.de' }
   }
   // Die Plattform-Domain selbst (oder eine ihrer Subdomains) als eigene
   // Domain eines Betriebs würde mit dem Subdomain-Routing in proxy.ts
   // kollidieren.
   const plattformDomain = process.env.NEXT_PUBLIC_PLATTFORM_DOMAIN
-  if (domain && plattformDomain && (domain === plattformDomain || domain.endsWith(`.${plattformDomain}`))) {
+  if (plattformDomain && (domain === plattformDomain || domain.endsWith(`.${plattformDomain}`))) {
     return { fehler: 'Die Plattform-Domain kann nicht als eigene Domain vergeben werden.' }
   }
+  return { domain }
+}
+
+export async function domainVerbindenAktion(
+  organisationId: string,
+  eingabe: string,
+  mitWww: boolean
+): Promise<{ fehler?: string; hinweis?: string; domain?: string }> {
+  await plattformAdminOderFehler()
+  const { domain, fehler } = domainNormalisieren(eingabe)
+  if (!domain) return { fehler }
 
   const supabase = getServiceClient()
-  const { error } = await supabase
-    .from('organisationen')
-    .update({ custom_domain: domain || null })
-    .eq('id', organisationId)
+  const [{ data: belegt }, { data: organisation }] = await Promise.all([
+    supabase.from('organisationen').select('id').eq('custom_domain', domain).neq('id', organisationId).maybeSingle(),
+    supabase.from('organisationen').select('custom_domain').eq('id', organisationId).maybeSingle(),
+  ])
+  if (belegt) return { fehler: 'Diese Domain ist schon einer anderen Organisation zugeordnet.' }
+  if (!organisation) return { fehler: 'Organisation nicht gefunden.' }
 
-  if (error) {
-    const istDuplikat = error.code === '23505'
-    return { fehler: istDuplikat ? 'Diese Domain ist schon einer anderen Organisation zugeordnet' : error.message }
+  let hinweis: string | undefined
+  if (vercelKonfiguriert()) {
+    const bisher = organisation.custom_domain as string | null
+    if (bisher && bisher !== domain) {
+      const entfernt = await domainEntfernen(bisher)
+      if (entfernt.fehler) return { fehler: `Alte Domain ${bisher}: ${entfernt.fehler}` }
+    }
+    const hinzugefuegt = await domainHinzufuegen(domain, mitWww)
+    if (hinzugefuegt.fehler) return { fehler: hinzugefuegt.fehler }
+  } else {
+    hinweis = 'Gespeichert, aber Vercel ist nicht eingerichtet – Domain dort bitte von Hand hinzufügen.'
   }
+
+  const { error } = await supabase.from('organisationen').update({ custom_domain: domain }).eq('id', organisationId)
+  if (error) {
+    return { fehler: error.code === '23505' ? 'Diese Domain ist schon einer anderen Organisation zugeordnet.' : error.message }
+  }
+  revalidatePath('/plattform-admin')
+  return { domain, hinweis }
+}
+
+export async function domainStatusAktion(organisationId: string): Promise<{ fehler?: string; status?: DomainStatus }> {
+  await plattformAdminOderFehler()
+  if (!vercelKonfiguriert()) return { fehler: 'Vercel ist nicht eingerichtet (siehe README → Setup).' }
+
+  const supabase = getServiceClient()
+  const { data } = await supabase.from('organisationen').select('custom_domain').eq('id', organisationId).maybeSingle()
+  const domain = data?.custom_domain as string | null | undefined
+  if (!domain) return { fehler: 'Keine eigene Domain hinterlegt.' }
+  return domainStatusLaden(domain)
+}
+
+export async function domainEntfernenAktion(organisationId: string): Promise<{ fehler?: string }> {
+  await plattformAdminOderFehler()
+
+  const supabase = getServiceClient()
+  const { data } = await supabase.from('organisationen').select('custom_domain').eq('id', organisationId).maybeSingle()
+  const domain = data?.custom_domain as string | null | undefined
+  if (domain && vercelKonfiguriert()) {
+    const entfernt = await domainEntfernen(domain)
+    if (entfernt.fehler) return { fehler: entfernt.fehler }
+  }
+
+  const { error } = await supabase.from('organisationen').update({ custom_domain: null }).eq('id', organisationId)
+  if (error) return { fehler: error.message }
   revalidatePath('/plattform-admin')
   return {}
 }
@@ -155,6 +212,16 @@ export async function organisationLoeschen(organisationId: string) {
   await plattformAdminOderFehler()
 
   const supabase = getServiceClient()
+
+  // Sonst bliebe die Domain des Ex-Kunden im Vercel-Projekt und zeigte die
+  // Maestoso-Login-Seite statt einer Fehlermeldung.
+  const { data } = await supabase.from('organisationen').select('custom_domain').eq('id', organisationId).maybeSingle()
+  const domain = data?.custom_domain as string | null | undefined
+  if (domain && vercelKonfiguriert()) {
+    const entfernt = await domainEntfernen(domain)
+    if (entfernt.fehler) throw new Error(`Domain ${domain} konnte nicht aus Vercel entfernt werden: ${entfernt.fehler}`)
+  }
+
   const { error } = await supabase.from('organisationen').delete().eq('id', organisationId)
   if (error) throw new Error(error.message)
   revalidatePath('/plattform-admin')
