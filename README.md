@@ -356,6 +356,13 @@ bedienerfreundlich wirkt, bevor echte Kunden sie sehen.
   Bestellungen heute, fällige Lagerprüfungen, Personal heute), aus den
   bestehenden, bereits mandantensicheren Abfragen berechnet – siehe
   `app/dashboard/page.tsx`.
+- **Dark Mode**: nur per Schalter (Login oben rechts, sonst in
+  `AppHeader.tsx`), nie automatisch über die Geräteeinstellung – alle
+  sehen zuerst den hellen Standard. Die Wahl liegt im Cookie
+  `maestoso-theme` und wird serverseitig gelesen (`components/ThemeBereich.tsx`),
+  damit nichts beim Laden umspringt. Gilt nur für Login, Dashboard und
+  Plattform-Admin; öffentliche Gästeseiten bleiben immer hell. Die Sidebar
+  hat eigene Tokens (`--sidebar*`) und bleibt in beiden Modi dunkelblau.
 - **Logo**: drei Taktstriche (`components/Logo.tsx`), funktioniert als
   eigenständiges Zeichen (App-Icon) wie auch neben dem Schriftzug.
 - **Zwei Demo-Artefakte** (beide synchron zum echten Projekt-Look, nicht

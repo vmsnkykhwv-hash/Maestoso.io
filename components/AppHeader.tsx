@@ -3,6 +3,7 @@
 import { LogOut, Menu } from 'lucide-react'
 import { logout } from '@/app/actions'
 import { useOpenMobileNav } from './DashboardShell'
+import ThemeUmschalter from './ThemeUmschalter'
 
 // Innerhalb von DashboardShell (Dashboard-Seiten) übernimmt die Sidebar das
 // Abmelden; hier erscheint stattdessen auf kleinen Bildschirmen ein Knopf,
@@ -27,14 +28,17 @@ export default function AppHeader({ titel }: { titel: string }) {
         )}
         <h1 className="font-display text-lg font-semibold">{titel}</h1>
       </div>
-      {!openMobileNav && (
-        <form action={logout}>
-          <button type="submit" className="flex items-center gap-1.5 text-sm text-muted">
-            <LogOut className="h-4 w-4" />
-            Abmelden
-          </button>
-        </form>
-      )}
+      <div className="flex items-center gap-4">
+        <ThemeUmschalter />
+        {!openMobileNav && (
+          <form action={logout}>
+            <button type="submit" className="flex items-center gap-1.5 text-sm text-muted">
+              <LogOut className="h-4 w-4" />
+              Abmelden
+            </button>
+          </form>
+        )}
+      </div>
     </header>
   )
 }

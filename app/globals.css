@@ -19,6 +19,36 @@
   --locked-bg: #f3e3c0;
   --danger: #b3432e;
   --danger-bg: #f6e3de;
+  /* Sidebar bleibt in beiden Modi dunkelblau, damit die Marke auch im Dark
+     Mode wiedererkennbar bleibt – deshalb eigene Tokens statt
+     foreground/background, die sich im Dark Mode umdrehen. */
+  --sidebar: #1b2340;
+  --sidebar-foreground: #faf7f0;
+}
+
+/* Dark Mode nur per Schalter (components/ThemeBereich.tsx), bewusst nicht
+   per prefers-color-scheme: alle sehen zuerst den hellen Standard, egal wie
+   ihr Gerät eingestellt ist. Gilt nur innerhalb des ThemeBereich-Wrappers,
+   damit öffentliche Gästeseiten (Reservieren, Bestellen, Website …) immer
+   hell bleiben. */
+[data-theme='dark'] {
+  --background: #141a30;
+  --foreground: #f3ead9;
+  --foreground-soft: #d6ccb8;
+  --card: #1f2640;
+  --card-dim: #262e4b;
+  --border: #333b5c;
+  --accent: #e0ab42;
+  --accent-foreground: #1b2340;
+  --accent-soft: #3a2f17;
+  --muted: #a79c87;
+  --success: #4f9a73;
+  --success-bg: #1d3327;
+  --locked: #c99a4a;
+  --locked-bg: #3a2f17;
+  --danger: #e07a5f;
+  --danger-bg: #3a211c;
+  color-scheme: dark;
 }
 
 @theme inline {
@@ -38,6 +68,8 @@
   --color-locked-bg: var(--locked-bg);
   --color-danger: var(--danger);
   --color-danger-bg: var(--danger-bg);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
   --font-sans: var(--font-manrope);
   --font-display: var(--font-fraunces);
 }
@@ -46,4 +78,12 @@ html,
 body {
   background: var(--background);
   color: var(--foreground);
+}
+
+/* Der Wrapper färbt nur seine eigene Fläche – ohne das hier blitzt beim
+   Über-den-Rand-Scrollen (iOS) der helle body-Hintergrund durch. */
+html:has([data-theme='dark']),
+html:has([data-theme='dark']) body {
+  background: #141a30;
+  color-scheme: dark;
 }

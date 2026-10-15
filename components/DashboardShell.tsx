@@ -26,14 +26,14 @@ export default function DashboardShell({ organisationName, children }: { organis
 
         {mobilNavOffen && (
           <div className="fixed inset-0 z-50 flex md:hidden">
-            <div className="absolute inset-0 bg-foreground/40" onClick={() => setMobilNavOffen(false)} />
+            <div className="absolute inset-0 bg-sidebar/40" onClick={() => setMobilNavOffen(false)} />
             <div className="relative flex">
               <Sidebar organisationName={organisationName} />
               <button
                 type="button"
                 onClick={() => setMobilNavOffen(false)}
                 aria-label="Navigation schließen"
-                className="absolute right-[-44px] top-4 flex h-9 w-9 items-center justify-center rounded-full bg-foreground text-background"
+                className="absolute right-[-44px] top-4 flex h-9 w-9 items-center justify-center rounded-full bg-sidebar text-sidebar-foreground"
               >
                 <X className="h-5 w-5" />
               </button>

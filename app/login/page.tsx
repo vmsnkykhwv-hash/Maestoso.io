@@ -1,9 +1,11 @@
 import Logo from '@/components/Logo'
+import ThemeUmschalter from '@/components/ThemeUmschalter'
 import LoginForm from './LoginForm'
 
 export default function LoginPage() {
   return (
-    <main className="flex min-h-dvh flex-col items-center justify-center px-6">
+    <main className="relative flex min-h-dvh flex-col items-center justify-center px-6">
+      <ThemeUmschalter className="absolute right-4 top-4" />
       <div className="w-full max-w-sm space-y-8 text-center">
         <div className="flex flex-col items-center gap-2">
           <div className="flex items-center gap-2.5">

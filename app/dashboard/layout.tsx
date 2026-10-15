@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { getSitzung } from '@/lib/session'
 import { organisationsName } from '@/lib/tischplan/daten'
 import DashboardShell from '@/components/DashboardShell'
+import ThemeBereich from '@/components/ThemeBereich'
 
 export const dynamic = 'force-dynamic'
 
@@ -14,5 +15,9 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   const organisationName = (await organisationsName(sitzung.organisationId)) ?? 'Eure Organisation'
 
-  return <DashboardShell organisationName={organisationName}>{children}</DashboardShell>
+  return (
+    <ThemeBereich>
+      <DashboardShell organisationName={organisationName}>{children}</DashboardShell>
+    </ThemeBereich>
+  )
 }
