@@ -4,7 +4,12 @@ import { aktuellerCode } from '../lib/konten/totp'
 const PORT = 3200, CAFE = `http://cafe-test.maestoso.test:${PORT}`, ADMIN = `http://maestoso.test:${PORT}`
 const ok = (b: boolean, t: string) => { console.log(b ? '✓' : '✗', t); if (!b) process.exitCode = 1 }
 const sichtbar = (p: Page, text: string) => p.getByText(text).first().waitFor({ timeout: 8000 }).then(() => true, () => false)
-const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || undefined, args: [
+const browser = await chromium.launch({
+  // Volles Chromium statt Headless-Shell: nur dieses respektiert die
+  // Ausnahme für die http-Testadressen, ohne sie setzt der Browser unsere
+  // Secure-Cookies (Anmeldung) nicht.
+  ...(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : { channel: 'chromium' }),
+  args: [
   '--host-resolver-rules=MAP *.maestoso.test 127.0.0.1, MAP maestoso.test 127.0.0.1',
   `--unsafely-treat-insecure-origin-as-secure=${ADMIN},${CAFE}` ] })
 const lokal = (link: string) => link.replace('https://', 'http://').replace('.maestoso.test/', `.maestoso.test:${PORT}/`)
