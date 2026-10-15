@@ -10,18 +10,25 @@ COMPOSE="docker compose -f e2e/docker-compose.yml -p maestoso-e2e"
 PSQL="$COMPOSE exec -T -e PGOPTIONS=--client-min-messages=warning db psql -U postgres -d maestoso -v ON_ERROR_STOP=1 -q"
 JWT_SECRET=e2e-nur-fuer-tests-e2e-nur-fuer-tests-123
 
+# Der App-Server läuft in einer eigenen Prozessgruppe: `next start` startet
+# Unterprozesse, die ein kill auf die Eltern-PID allein überleben würden.
 aufraeumen() {
-  [ -n "${NEXT_PID:-}" ] && kill "$NEXT_PID" 2>/dev/null || true
+  [ -n "${NEXT_PID:-}" ] && kill -- -"$NEXT_PID" 2>/dev/null || true
   [ -n "${GATEWAY_PID:-}" ] && kill "$GATEWAY_PID" 2>/dev/null || true
   [ -z "${E2E_DB_BEHALTEN:-}" ] && $COMPOSE down -v >/dev/null 2>&1 || true
 }
 trap aufraeumen EXIT
 
+if curl -s -o /dev/null http://127.0.0.1:3200; then
+  echo "Port 3200 ist belegt – läuft noch ein alter Server?" >&2
+  exit 1
+fi
+
 $COMPOSE down -v >/dev/null 2>&1 || true
-$COMPOSE up -d --wait db
+$COMPOSE up -d --wait db 2>/dev/null
 $PSQL < e2e/init.sql
 for f in supabase/migrations/*.sql; do $PSQL < "$f" > /dev/null; done
-$COMPOSE up -d rest
+$COMPOSE up -d rest 2>/dev/null
 $PSQL < e2e/grants.sql
 
 node e2e/gateway.mjs &
@@ -38,7 +45,7 @@ export E2E_NEXT_LOG=e2e/next.log
 unset RESEND_API_KEY VERCEL_API_TOKEN
 
 npm run build > e2e/build.log 2>&1 || { tail -30 e2e/build.log; exit 1; }
-PORT=3200 npx next start > "$E2E_NEXT_LOG" 2>&1 &
+PORT=3200 setsid npx next start > "$E2E_NEXT_LOG" 2>&1 &
 NEXT_PID=$!
 for _ in $(seq 1 30); do curl -s -o /dev/null -H "Host: maestoso.test" http://127.0.0.1:3200/login && break; sleep 1; done
 
