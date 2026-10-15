@@ -1,4 +1,4 @@
-# Partitura
+# Maestoso
 
 Zentrale Mandanten-Plattform (Arbeitsname bis zur Technik-Fertigstellung:
 "Serviceflow Plattform", im Code/Repo-Namen noch sichtbar): ein Login, über
@@ -10,8 +10,11 @@ Verkaufsgespräch.
 Markenrichtung "Konzertsaal" (dunkles Tintenblau + Gold auf warmem
 Creme-Papier, Fraunces/Manrope) ist mit dem Kunden abgestimmt und im echten
 Projekt umgesetzt (Design-Tokens in `app/globals.css`, Sidebar-Navigation
-in `components/Sidebar.tsx`/`DashboardShell.tsx`). Der Name "Partitura"
-gilt vorbehaltlich der laufenden Domain-/Markenprüfung durch den Kunden.
+in `components/Sidebar.tsx`/`DashboardShell.tsx`). Der Name "Maestoso"
+(vorher "Partitura" – verworfen, weil .de/.com/.app/.io durchgehend
+besetzt waren) ist markenrechtlich geprüft (EUIPO + DPMA, Klassen 09/42:
+keine aktive Marke in Software-relevanten Klassen) und die Domain
+`maestoso.io` ist frei.
 
 ## Zwei Zugangsarten
 
@@ -334,9 +337,11 @@ Nach dem Sicherheits-Audit folgte die Optik: Name, Farben, Typografie und
 Navigation wurden überarbeitet, damit die Plattform professionell und
 bedienerfreundlich wirkt, bevor echte Kunden sie sehen.
 
-- **Name**: "Partitura" – die Metapher einer Partitur, die alle Abläufe
-  synchron hält. Gilt vorbehaltlich der laufenden Domain-/Markenprüfung
-  durch den Kunden (Status: offen, siehe Setup-Checkliste unten).
+- **Name**: "Maestoso" (italienisch für "majestätisch", eine
+  Tempobezeichnung) – bleibt in der Dirigenten-/Orchester-Metapher, die
+  schon mit "Partitura" begonnen hat. Markenrechtlich geprüft (EUIPO +
+  DPMA, Klassen 09/42: keine aktive Marke in Software-relevanten
+  Klassen) und Domain `maestoso.io` gesichert – Status: abgeschlossen.
 - **Farben/Typografie**: Palette "Konzertsaal" (dunkles Tintenblau `#1b2340`,
   Gold `#c9962b`, warmes Creme-Papier `#faf7f0`) in `app/globals.css` als
   CSS-Variablen, Schriften Fraunces (Überschriften) + Manrope (Fließtext)
@@ -573,7 +578,7 @@ Mal unter einem Advisory-Lock direkt vor dem Insert laufen lassen (siehe
   dem bei Resend angelegten Webhook-Endpoint (`<domain>/api/resend/webhook`,
   Events "email.opened" + "email.clicked").
 - `NEXT_PUBLIC_PLATTFORM_DOMAIN` – eure eigene Plattform-Domain (z. B.
-  `partitura.app`), ohne Protokoll/Subdomain. Lokal leer lassen – ohne
+  `maestoso.io`), ohne Protokoll/Subdomain. Lokal leer lassen – ohne
   diese Variable ist das Domain-Routing fürs Website-Modul inaktiv.
 
 ### 3. Lokal starten
@@ -594,10 +599,10 @@ anmelden.
 - Die Umgebungsvariablen oben in den Vercel-Projekteinstellungen eintragen
   (Production + Preview).
 - Eigene Domain + Wildcard-Subdomain im Vercel-Projekt hinzufügen (z. B.
-  `partitura.app` und `*.partitura.app`), damit jede
+  `maestoso.io` und `*.maestoso.io`), damit jede
   Organisations-Subdomain automatisch funktioniert, sobald
   `NEXT_PUBLIC_PLATTFORM_DOMAIN` gesetzt ist.
-- Für eine eigene Kunden-Domain (z. B. `cafedoa.de`): im Plattform-Admin
+- Für eine eigene Kunden-Domain (z. B. `musterbetrieb.de`): im Plattform-Admin
   oder im Website-Modul der Organisation eintragen, danach dieselbe Domain
   zusätzlich im Vercel-Projekt hinzufügen (Vercel zeigt dort den nötigen
   DNS-Eintrag an, den der Kunde bei seinem Domain-Anbieter setzt) – erst
@@ -860,7 +865,9 @@ anmelden.
     - Impressum, Datenschutzerklärung, Auftragsverarbeitungsvertrag (AVV)
       mit jeder Organisation – aktuell nirgends im Projekt vorhanden,
       rechtlich aber Pflicht, bevor echte Kunden Daten eingeben.
-    - Domain-/Markenprüfung für "Partitura" final abschließen.
+    - ~~Domain-/Markenprüfung~~ – erledigt, Name auf "Maestoso" geändert
+      (siehe "Aktueller Stand" oben), Domain `maestoso.io` tatsächlich
+      registrieren, sobald es an den Live-Betrieb geht.
     - Produktivumgebung einrichten (echtes Supabase-Projekt, echte
       Umgebungsvariablen, Resend-Absende-Domain verifizieren, PayPal auf
       Live-Modus je Organisation umstellen) – siehe "Setup" oben.

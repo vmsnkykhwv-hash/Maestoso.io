@@ -6,7 +6,7 @@ const manrope = Manrope({ subsets: ['latin'], variable: '--font-manrope' })
 const fraunces = Fraunces({ subsets: ['latin'], variable: '--font-fraunces' })
 
 export const metadata: Metadata = {
-  title: 'Partitura',
+  title: 'Maestoso',
   description: 'Die Plattform, die Reservierungen, Personal, Lager und Bestellungen im selben Takt hält.',
 }
 

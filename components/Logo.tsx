@@ -1,5 +1,5 @@
 // Die drei Taktstriche aus dem Markenkonzept – als eigenständiges Zeichen
-// (ohne Schriftzug) genauso nutzbar wie neben dem Partitura-Lettering.
+// (ohne Schriftzug) genauso nutzbar wie neben dem Maestoso-Lettering.
 // Nutzt zwei Farben: currentColor für die auffälligen Striche, der Rest in
 // der jeweils umgebenden Hintergrundfarbe (per CSS-Variable gesetzt, siehe
 // Verwendung in Sidebar/AppHeader) – daher kein einfaches einfarbiges Icon.

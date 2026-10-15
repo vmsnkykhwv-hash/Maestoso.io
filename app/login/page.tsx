@@ -8,7 +8,7 @@ export default function LoginPage() {
         <div className="flex flex-col items-center gap-2">
           <div className="flex items-center gap-2.5">
             <Logo className="h-7 w-7 text-accent" />
-            <h1 className="font-display text-2xl font-semibold text-foreground">Partitura</h1>
+            <h1 className="font-display text-2xl font-semibold text-foreground">Maestoso</h1>
           </div>
           <p className="text-sm text-muted">Zugangscode + PIN oder Plattform-Admin-PIN eingeben</p>
         </div>
