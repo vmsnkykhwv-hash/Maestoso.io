@@ -1,8 +1,7 @@
-'use client'
-
-import { useState, useTransition } from 'react'
-import { customDomainSpeichernAktion } from './actions'
-
+// Nur Anzeige: Die eigene Domain trägt ausschließlich der Plattform-Admin
+// ein (app/plattform-admin). Dürfte ein Betrieb sie selbst setzen, könnte er
+// die Domain eines anderen Betriebs beanspruchen, solange der sie noch nicht
+// hinterlegt hat – Besucher dieser Domain sähen dann seine Website.
 export default function DomainEinstellungen({
   subdomain,
   anfangsCustomDomain,
@@ -10,23 +9,6 @@ export default function DomainEinstellungen({
   subdomain: string | null
   anfangsCustomDomain: string | null
 }) {
-  const [customDomain, setCustomDomain] = useState(anfangsCustomDomain ?? '')
-  const [gespeichert, setGespeichert] = useState(true)
-  const [fehler, setFehler] = useState<string | null>(null)
-  const [pending, startTransition] = useTransition()
-
-  function speichern() {
-    setFehler(null)
-    startTransition(async () => {
-      const ergebnis = await customDomainSpeichernAktion(customDomain)
-      if (ergebnis.fehler) {
-        setFehler(ergebnis.fehler)
-        return
-      }
-      setGespeichert(true)
-    })
-  }
-
   return (
     <div className="space-y-4">
       <div className="rounded-2xl border border-border bg-card p-4">
@@ -37,28 +19,10 @@ export default function DomainEinstellungen({
 
       <div className="rounded-2xl border border-border bg-card p-4">
         <h3 className="mb-2 text-sm font-semibold">Eigene Domain (optional)</h3>
-        {fehler && <p className="mb-2 text-sm text-danger">{fehler}</p>}
-        <input
-          value={customDomain}
-          onChange={(e) => {
-            setCustomDomain(e.target.value)
-            setGespeichert(false)
-          }}
-          placeholder="z. B. musterbetrieb.de"
-          className="w-full rounded-lg border border-border bg-background px-2 py-1.5 text-sm"
-        />
-        <button
-          type="button"
-          onClick={speichern}
-          disabled={pending || gespeichert}
-          className="mt-3 w-full rounded-xl bg-accent py-3 text-sm font-semibold text-accent-foreground disabled:opacity-40"
-        >
-          {pending ? 'Speichert…' : gespeichert ? 'Gespeichert' : 'Speichern'}
-        </button>
+        <p className="text-sm text-muted">{anfangsCustomDomain ?? 'Noch keine eigene Domain eingerichtet.'}</p>
         <p className="mt-3 text-xs text-muted">
-          Nach dem Eintragen hier bitte kurz bei uns melden – wir richten eure Domain dann auf unserer Seite ein.
-          Danach müsst ihr bei eurem Domain-Anbieter noch einen DNS-Eintrag setzen (welchen genau, sagen wir euch dann).
-          Bis beides erledigt ist, erreichen Gäste die Website weiterhin über eure Subdomain.
+          Eine eigene Domain richten wir für euch ein – meldet euch einfach bei uns, egal ob ihr schon eine Domain
+          habt oder eine neue braucht. Bis sie eingerichtet ist, erreichen Gäste eure Website über die Subdomain.
         </p>
       </div>
     </div>

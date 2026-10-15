@@ -1,3 +1,4 @@
+import { pinHashPruefen } from '@/lib/pinHash'
 import { getServiceClient } from '@/lib/supabase/server'
 import type { Mitarbeiter } from './types'
 
@@ -54,4 +55,27 @@ export async function ladeMitarbeiterListe(organisationId: string): Promise<Mita
     stundenGrenze: Number(m.stunden_grenze),
     aktiv: m.aktiv as boolean,
   }))
+}
+
+// Die Mitarbeiter-Anmeldung erkennt die Person allein an der PIN (siehe
+// lib/mitarbeiter/aktionen.ts). Zwei gleiche PINs in einer Organisation
+// hießen: wer zuerst gefunden wird, ist angemeldet – im schlimmsten Fall
+// landet eine Aushilfe im Leitungskonto. Der unique-Index auf
+// (organisation_id, pin_hash) aus 0002 greift nicht mehr, seit die Hashes
+// gesalzen sind (gleiche PIN = unterschiedlicher Hash), deshalb hier die
+// Prüfung gegen jeden Hash – auch inaktive, sonst knallt es beim
+// Reaktivieren.
+export async function pinInOrganisationVergeben(
+  organisationId: string,
+  pin: string,
+  ausserMitarbeiterId?: string
+): Promise<boolean> {
+  const supabase = getServiceClient()
+  const { data } = await supabase.from('mitarbeiter').select('id, pin_hash').eq('organisation_id', organisationId)
+
+  for (const m of data ?? []) {
+    if (m.id === ausserMitarbeiterId) continue
+    if (await pinHashPruefen(pin, m.pin_hash as string)) return true
+  }
+  return false
 }

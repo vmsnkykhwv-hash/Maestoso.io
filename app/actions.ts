@@ -9,6 +9,11 @@ import { getServiceClient } from '@/lib/supabase/server'
 
 const SPERRE_AB_VERSUCHEN = 5
 
+// Gültig geformter, aber zu keiner PIN passender Hash: wird bei unbekanntem
+// Zugangscode trotzdem geprüft, damit die Antwort genauso lange dauert wie
+// bei falscher PIN – sonst verrät die Antwortzeit, welche Codes es gibt.
+const ATTRAPPEN_HASH = `${'0'.repeat(32)}:${'0'.repeat(64)}`
+
 async function sitzungSetzen(token: string) {
   const cookieStore = await cookies()
   cookieStore.set(SESSION_COOKIE_NAME, token, {
@@ -63,9 +68,12 @@ export async function login(formData: FormData): Promise<{ fehler?: string }> {
     .eq('login_code', loginCode)
     .maybeSingle()
 
-  if (!organisation || !(await pinHashPruefen(pin, organisation.pin_hash as string))) {
+  const pinKorrekt = await pinHashPruefen(pin, (organisation?.pin_hash as string | undefined) ?? ATTRAPPEN_HASH)
+  if (!organisation || !pinKorrekt) {
     await rateLimitFehlgeschlagen(sperrschluessel, SPERRE_AB_VERSUCHEN)
-    return { fehler: organisation ? 'Falscher PIN' : 'Unbekannter Zugangscode' }
+    // Einheitliche Meldung: sonst verrät das Login, welche Zugangscodes es
+    // gibt, und man kann gezielt nur noch deren PINs durchprobieren.
+    return { fehler: 'Zugangscode oder PIN falsch' }
   }
 
   await rateLimitZuruecksetzen(sperrschluessel)

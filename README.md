@@ -265,6 +265,22 @@ Fehler durchgesehen. Alles Gefundene wurde behoben:
   Anlegen eines Eintrags in einer fremden Kategorie liefen nur über die ID.
   Jetzt ebenfalls über `organisation_id` gefiltert (`lib/website/daten.ts`),
   mit "Nicht gefunden" statt stillem Erfolg, wenn die ID nicht passt.
+- **Zugänge (zweite Runde)**:
+  - Mitarbeiter-PINs müssen je Organisation eindeutig sein – die Anmeldung
+    erkennt die Person allein an der PIN. Der unique-Index aus `0002` greift
+    seit den gesalzenen Hashes nicht mehr, deshalb prüft jetzt
+    `pinInOrganisationVergeben` (`lib/mitarbeiter/daten.ts`) beim Anlegen und
+    Zurücksetzen gegen jeden Hash.
+  - Login verrät nicht mehr, ob ein Zugangscode existiert: einheitliche
+    Meldung und gleiche Antwortzeit (Attrappen-Hash in `app/actions.ts`).
+  - Neue Organisationen: PIN 6–12 Ziffern, Mitarbeiter-PIN 4–8 Ziffern,
+    triviale PINs (0000, 1234 …) abgelehnt (`lib/pinRegeln.ts`, gilt nur für
+    neue/geänderte PINs). Zugangscode ohne Vorgabe wird mit Zufallsanteil
+    erzeugt (z. B. `cafe-rose-k7m2qx`). Organisationen sind intern ohnehin
+    über ihre UUID getrennt – gleiche Namen sind kein Problem, nur der
+    Zugangscode muss eindeutig sein (Datenbank-Constraint).
+  - Eigene Domain kann nur noch der Plattform-Admin eintragen – vorher hätte
+    ein Betrieb die Domain eines anderen beanspruchen können.
 - **Bestellung – Preismanipulation**: Der Online-Bestellen-Endpunkt nahm
   bisher Name/Preis jeder Warenkorbposition direkt vom Client entgegen –
   ein direkter Aufruf der Server Action (am Formular vorbei) hätte beliebige

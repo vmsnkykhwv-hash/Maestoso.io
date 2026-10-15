@@ -22,18 +22,19 @@ export default function OrganisationenVerwaltung({
   const [pin, setPin] = useState('')
 
   function erstellen() {
-    if (!name.trim() || !loginCode.trim() || !pin.trim()) return
+    if (!name.trim() || !pin.trim()) return
     setFehler(null)
     startTransition(async () => {
-      try {
-        const neu = await organisationAnlegen(name, loginCode, pin)
-        setOrganisationen((prev) => [neu, ...prev])
-        setName('')
-        setLoginCode('')
-        setPin('')
-      } catch (e) {
-        setFehler(e instanceof Error ? e.message : 'Organisation konnte nicht angelegt werden')
+      const ergebnis = await organisationAnlegen(name, loginCode, pin)
+      if (ergebnis.fehler || !ergebnis.organisation) {
+        setFehler(ergebnis.fehler ?? 'Organisation konnte nicht angelegt werden')
+        return
       }
+      const neu = ergebnis.organisation
+      setOrganisationen((prev) => [neu, ...prev])
+      setName('')
+      setLoginCode('')
+      setPin('')
     })
   }
 
@@ -54,8 +55,10 @@ export default function OrganisationenVerwaltung({
 
   function customDomainSpeichern(organisationId: string, wert: string) {
     setOrganisationen((prev) => prev.map((o) => (o.id === organisationId ? { ...o, customDomain: wert || null } : o)))
+    setFehler(null)
     startTransition(async () => {
-      await customDomainSpeichernAktionAdmin(organisationId, wert)
+      const ergebnis = await customDomainSpeichernAktionAdmin(organisationId, wert)
+      if (ergebnis.fehler) setFehler(ergebnis.fehler)
     })
   }
 
@@ -74,13 +77,14 @@ export default function OrganisationenVerwaltung({
           <input
             value={loginCode}
             onChange={(e) => setLoginCode(e.target.value)}
-            placeholder="Zugangscode"
+            placeholder="Zugangscode (leer = automatisch)"
             className="rounded-xl border border-border bg-background px-3 py-2 text-sm"
           />
           <input
             value={pin}
             onChange={(e) => setPin(e.target.value)}
-            placeholder="PIN"
+            placeholder="PIN (6–12 Ziffern)"
+            inputMode="numeric"
             className="rounded-xl border border-border bg-background px-3 py-2 text-sm"
           />
         </div>

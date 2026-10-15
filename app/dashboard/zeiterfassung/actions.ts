@@ -2,7 +2,8 @@
 
 import { getServiceClient } from '@/lib/supabase/server'
 import { pinHashErstellen } from '@/lib/pinHash'
-import { ladeMitarbeiter, ladeMitarbeiterListe } from '@/lib/mitarbeiter/daten'
+import { ladeMitarbeiter, ladeMitarbeiterListe, pinInOrganisationVergeben } from '@/lib/mitarbeiter/daten'
+import { MITARBEITER_PIN, pinFehler } from '@/lib/pinRegeln'
 import { mitarbeiterSitzungOderFehler } from '@/lib/mitarbeiter/session'
 import type { Mitarbeiter, MitarbeiterRolle, MitarbeiterTyp } from '@/lib/mitarbeiter/types'
 import { ladeZeiteintraege } from '@/lib/zeiterfassung/daten'
@@ -121,6 +122,12 @@ export async function mitarbeiterAnlegen(input: {
   const sitzung = await mitarbeiterSitzungOderFehler()
   if (sitzung.rolle !== 'leitung') return { fehler: 'Keine Berechtigung' }
 
+  const formatFehler = pinFehler(input.pin, MITARBEITER_PIN)
+  if (formatFehler) return { fehler: formatFehler }
+  if (await pinInOrganisationVergeben(sitzung.organisationId, input.pin)) {
+    return { fehler: 'Dieser PIN ist in eurer Organisation schon vergeben' }
+  }
+
   const supabase = getServiceClient()
   const pinHash = await pinHashErstellen(input.pin)
 
@@ -210,6 +217,12 @@ export async function dokumentLoeschenAktion(id: string): Promise<{ fehler?: str
 export async function mitarbeiterPinZuruecksetzen(mitarbeiterId: string, neuerPin: string): Promise<{ fehler?: string }> {
   const sitzung = await mitarbeiterSitzungOderFehler()
   if (sitzung.rolle !== 'leitung') return { fehler: 'Keine Berechtigung' }
+
+  const formatFehler = pinFehler(neuerPin, MITARBEITER_PIN)
+  if (formatFehler) return { fehler: formatFehler }
+  if (await pinInOrganisationVergeben(sitzung.organisationId, neuerPin, mitarbeiterId)) {
+    return { fehler: 'Dieser PIN ist in eurer Organisation schon vergeben' }
+  }
 
   const supabase = getServiceClient()
   const pinHash = await pinHashErstellen(neuerPin)

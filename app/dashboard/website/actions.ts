@@ -1,7 +1,6 @@
 'use server'
 
 import { getSitzung } from '@/lib/session'
-import { getServiceClient } from '@/lib/supabase/server'
 import {
   bildHochladen,
   bildLoeschen,
@@ -85,19 +84,4 @@ export async function menuLadenAktion(): Promise<{ kategorien: MenuKategorie[]; 
   const organisationId = await organisationIdOderFehler()
   const [kategorien, eintraege] = await Promise.all([ladeMenuKategorien(organisationId), ladeMenuEintraege(organisationId)])
   return { kategorien, eintraege }
-}
-
-export async function customDomainSpeichernAktion(customDomain: string): Promise<{ fehler?: string }> {
-  const organisationId = await organisationIdOderFehler()
-  const supabase = getServiceClient()
-  const { error } = await supabase
-    .from('organisationen')
-    .update({ custom_domain: customDomain.trim().toLowerCase() || null })
-    .eq('id', organisationId)
-
-  if (error) {
-    const istDuplikat = error.code === '23505'
-    return { fehler: istDuplikat ? 'Diese Domain ist schon vergeben' : error.message }
-  }
-  return {}
 }
