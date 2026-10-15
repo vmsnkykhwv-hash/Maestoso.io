@@ -55,6 +55,8 @@ await tablet.getByPlaceholder('Name').fill('Jonas Keller')
 await tablet.getByPlaceholder('PIN').fill('4711')
 await tablet.getByRole('button', { name: 'Anlegen' }).click()
 ok(await sichtbar(tablet, 'schon vergeben'), 'Doppelte PIN wird abgelehnt')
+await tablet.goto(`${CAFE}/dashboard/zeiterfassung`) // "Alle Zeiten" ist die Startansicht – der Fehler trat nur beim ersten Laden auf
+ok(await tablet.getByPlaceholder('Notiz (optional)').first().waitFor({ timeout: 8000 }).then(() => true, () => false), 'Inhaberin sieht unter "Alle Zeiten" sofort die Zeiten der ersten Person')
 
 // Tablet als Tresen freigeben, Inhaberin meldet sich ab
 await tablet.goto(`${CAFE}/dashboard/zugaenge`)

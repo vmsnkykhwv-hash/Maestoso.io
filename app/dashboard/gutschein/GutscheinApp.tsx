@@ -322,7 +322,7 @@ export default function GutscheinApp({
           <ArrowLeft className="h-4 w-4" /> Zurück zu den Tools
         </Link>
 
-        <div className="mb-4 flex gap-2">
+        <div className="mb-4 flex flex-wrap gap-2">
           <button
             type="button"
             onClick={() => setTab('gutscheine')}

@@ -166,7 +166,7 @@ export default function DomainVerwaltung({
               value={eingabe}
               onChange={(e) => setEingabe(e.target.value)}
               placeholder="z. B. musterbetrieb.de"
-              className="min-w-0 flex-1 rounded-lg border border-border bg-background px-2.5 py-1.5 text-sm"
+              className="min-w-48 flex-1 rounded-lg border border-border bg-background px-2.5 py-1.5 text-sm"
             />
             <label className="flex items-center gap-1.5 text-xs text-muted">
               <input type="checkbox" checked={mitWww} onChange={(e) => setMitWww(e.target.checked)} />

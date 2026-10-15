@@ -541,7 +541,11 @@ export default function ZeiterfassungApp({
 }
 
 function AlleZeitenAnsicht({ mitarbeiterListe }: { mitarbeiterListe: Mitarbeiter[] }) {
-  const [ausgewaehlteId, setAusgewaehlteId] = useState(mitarbeiterListe[0]?.id ?? '')
+  const [gewaehlteId, setAusgewaehlteId] = useState('')
+  // Die Liste kommt erst nach dem ersten Rendern (leer) an – ohne
+  // gültige Auswahl gilt deshalb die erste Person, sonst zeigt das
+  // Auswahlfeld einen Namen, aber darunter bleibt alles leer.
+  const ausgewaehlteId = mitarbeiterListe.some((m) => m.id === gewaehlteId) ? gewaehlteId : (mitarbeiterListe[0]?.id ?? '')
   const ziel = mitarbeiterListe.find((m) => m.id === ausgewaehlteId)
 
   if (mitarbeiterListe.length === 0) {
