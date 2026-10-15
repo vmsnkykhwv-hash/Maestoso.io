@@ -9,3 +9,11 @@ export async function gaesteHref(organisationId: string, pfad: string): Promise<
   if (h.get(ORG_HOST_HEADER) === organisationId) return pfad
   return internerPfad(organisationId, pfad)
 }
+
+// Wie gaesteHref, für den Team-Bereich (Anmeldung, Einladung, Passwort
+// vergessen): auf der Domain des Betriebs /team…, sonst /team/<id>….
+export async function teamHref(organisationId: string, pfad = ''): Promise<string> {
+  const h = await headers()
+  if (h.get(ORG_HOST_HEADER) === organisationId) return `/team${pfad}`
+  return `/team/${organisationId}${pfad}`
+}

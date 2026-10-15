@@ -24,7 +24,6 @@ export async function ladeFreischaltungen(organisationId: string): Promise<Recor
 export type OrganisationMitFreischaltungen = {
   id: string
   name: string
-  loginCode: string
   erstelltAt: string
   subdomain: string | null
   customDomain: string | null
@@ -38,7 +37,7 @@ export async function ladeOrganisationen(): Promise<OrganisationMitFreischaltung
   const [{ data: organisationen }, { data: freischaltungen }] = await Promise.all([
     supabase
       .from('organisationen')
-      .select('id, name, login_code, erstellt_at, subdomain, custom_domain')
+      .select('id, name, erstellt_at, subdomain, custom_domain')
       .order('erstellt_at', { ascending: false }),
     supabase.from('freischaltungen').select('organisation_id, modul, freigeschaltet'),
   ])
@@ -55,7 +54,6 @@ export async function ladeOrganisationen(): Promise<OrganisationMitFreischaltung
   return (organisationen ?? []).map((o) => ({
     id: o.id as string,
     name: o.name as string,
-    loginCode: o.login_code as string,
     erstelltAt: o.erstellt_at as string,
     subdomain: (o.subdomain as string | null) ?? null,
     customDomain: (o.custom_domain as string | null) ?? null,

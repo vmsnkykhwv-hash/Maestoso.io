@@ -1,111 +1,135 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { SESSION_COOKIE_NAME, verifySessionToken } from '@/lib/auth'
-import { altePlattformAdresse, internerPfad, oeffentlicherPfadAus, ORG_HOST_HEADER } from '@/lib/gaestePfade'
+import {
+  altePlattformAdresse,
+  internerPfad,
+  internerTeamPfad,
+  oeffentlicherPfadAus,
+  ORG_HOST_HEADER,
+} from '@/lib/gaestePfade'
 import { ladeHostOrganisationPerId, ladeOrganisationFuerHost, oeffentlicherHost } from '@/lib/organisationen'
 
+// Zwei Arten von Adressen:
+// - Plattform-Domain (maestoso.io): Plattform-Admin (/login, /plattform-admin),
+//   Impressum/Datenschutz der Plattform, Webhooks.
+// - Domain eines Betriebs (Subdomain oder eigene Domain): Gästeseiten unter
+//   kurzen Pfaden, Team-Anmeldung unter /team, Dashboard unter /dashboard.
+// Ohne NEXT_PUBLIC_PLATTFORM_DOMAIN (lokale Entwicklung) gibt es nur die
+// Plattform-Adresse mit den internen Pfaden (/team/<id>, /reservieren/<id> …).
+//
+// Hier wird nur die Signatur der Sitzung geprüft (Edge-Runtime, keine
+// Datenbank für Konten) – ob das Konto noch gültig ist, prüft lib/session.ts
+// in jeder Seite und Server Action.
 export async function proxy(request: NextRequest) {
-  const { pathname } = request.nextUrl
+  const { pathname, search } = request.nextUrl
 
   // Der Header darf nur von hier aus gesetzt werden – kommt er schon vom
   // Client mit, wird er verworfen.
   const requestHeaders = new Headers(request.headers)
   requestHeaders.delete(ORG_HOST_HEADER)
+  const weiter = () => NextResponse.next({ request: { headers: requestHeaders } })
+  const umschreiben = (ziel: string) =>
+    NextResponse.rewrite(new URL(ziel + search, request.url), { request: { headers: requestHeaders } })
   // Weiterleitungen nur für GET/HEAD: ein umgeleiteter POST (z. B. eine
   // Server Action) käme als GET an und ginge verloren.
   const umleitbar = request.method === 'GET' || request.method === 'HEAD'
 
-  // Domain-basiertes Routing: Besucher einer Organisations-Subdomain (z. B.
-  // musterbetrieb.<plattform-domain>) oder einer eigenen Domain (z. B.
-  // musterbetrieb.de) sehen dort die Gästeseiten dieser Organisation unter
-  // kurzen Pfaden (/reservieren, /impressum …), siehe lib/gaestePfade.ts.
-  // Ohne gesetzte NEXT_PUBLIC_PLATTFORM_DOMAIN (lokale Entwicklung) bleibt
-  // das komplett inaktiv.
   const plattformDomain = process.env.NEXT_PUBLIC_PLATTFORM_DOMAIN
   const host = (request.headers.get('host') ?? '').split(':')[0].toLowerCase()
-  const istPlattformHost = !plattformDomain || host === plattformDomain || host === `www.${plattformDomain}`
+  let hostOrganisationId: string | null = null
 
-  if (!istPlattformHost) {
-    const organisation = await ladeOrganisationFuerHost(host, plattformDomain!)
+  if (plattformDomain && host !== plattformDomain && host !== `www.${plattformDomain}`) {
+    const organisation = await ladeOrganisationFuerHost(host, plattformDomain)
     if (organisation) {
       // Sobald die eigene Domain funktioniert, soll niemand mehr die
       // Subdomain sehen – auch Suchmaschinen nicht (308 = dauerhaft).
       if (umleitbar && organisation.ueberSubdomain && organisation.customDomain && organisation.customDomainAktiv) {
-        return NextResponse.redirect(`https://${organisation.customDomain}${pathname}${request.nextUrl.search}`, 308)
+        return NextResponse.redirect(`https://${organisation.customDomain}${pathname}${search}`, 308)
       }
+      hostOrganisationId = organisation.id
+      requestHeaders.set(ORG_HOST_HEADER, organisation.id)
+
+      const teamPfad = internerTeamPfad(organisation.id, pathname)
+      if (teamPfad) return umschreiben(teamPfad)
 
       const oeffentlich = oeffentlicherPfadAus(pathname)
-      if (oeffentlich !== null) {
-        requestHeaders.set(ORG_HOST_HEADER, organisation.id)
-        return NextResponse.rewrite(new URL(internerPfad(organisation.id, oeffentlich) + request.nextUrl.search, request.url), {
-          request: { headers: requestHeaders },
-        })
-      }
+      if (oeffentlich !== null) return umschreiben(internerPfad(organisation.id, oeffentlich))
     }
+    // Unbekannter Host (z. B. eine Vercel-Vorschau-URL): wie die Plattform behandeln.
   } else if (plattformDomain && umleitbar) {
-    // Alte Plattform-Adressen (maestoso.io/reservieren/<id> …) auf die Domain
-    // des Betriebs umleiten, damit Gäste dort nur dessen Adresse sehen.
+    // Alte bzw. interne Adressen (maestoso.io/reservieren/<id>, /team/<id> …)
+    // auf die Domain des Betriebs umleiten – dort gelten Sitzungen und
+    // Gäste sehen nur dessen Adresse.
     const organisationId = altePlattformAdresse(pathname)
     if (organisationId) {
       const organisation = await ladeHostOrganisationPerId(organisationId)
       const zielHost = organisation && oeffentlicherHost(organisation, plattformDomain)
       if (zielHost) {
-        return NextResponse.redirect(`https://${zielHost}${oeffentlicherPfadAus(pathname)}${request.nextUrl.search}`, 308)
+        const teile = pathname.split('/').filter(Boolean)
+        const ziel = teile[0] === 'team' ? `/${['team', ...teile.slice(2)].join('/')}` : oeffentlicherPfadAus(pathname)
+        return NextResponse.redirect(`https://${zielHost}${ziel}${search}`, 308)
       }
     }
-  }
-
-  const token = request.cookies.get(SESSION_COOKIE_NAME)?.value
-  const sitzung = await verifySessionToken(token)
-
-  // Öffentliche Gäste-Buchungs-/Bestellseiten – kein Login, jede
-  // Organisation kann diese Links auf ihrer eigenen Website
-  // verlinken/einbetten.
-  if (
-    pathname.startsWith('/reservieren') ||
-    pathname.startsWith('/website') ||
-    pathname.startsWith('/bestellen') ||
-    pathname.startsWith('/gutschein/') ||
-    pathname.startsWith('/veranstaltung/')
-  ) {
-    return NextResponse.next({ request: { headers: requestHeaders } })
-  }
-
-  // Impressum und Datenschutzerklärung der Plattform müssen ohne Login
-  // erreichbar sein (§ 5 DDG: "leicht erkennbar, unmittelbar erreichbar").
-  if (pathname === '/impressum' || pathname === '/datenschutz') {
-    return NextResponse.next({ request: { headers: requestHeaders } })
   }
 
   // API-Routen (PayPal-/Resend-Webhook) prüfen sich selbst per
   // Signaturprüfung – ohne diese Ausnahme würde ein Request ohne
   // Login-Cookie (also jeder echte Webhook-Aufruf von außen) hier auf
   // /login umgeleitet statt den Route-Handler überhaupt zu erreichen.
-  if (pathname.startsWith('/api/')) {
-    return NextResponse.next({ request: { headers: requestHeaders } })
+  if (pathname.startsWith('/api/')) return weiter()
+
+  const sitzung = await verifySessionToken(request.cookies.get(SESSION_COOKIE_NAME)?.value)
+
+  if (hostOrganisationId) {
+    const sitzungDiesesBetriebs = sitzung?.typ === 'inhaber' && sitzung.organisationId === hostOrganisationId
+    // Bereits angemeldet: /team direkt ins Dashboard. Nur bei normalen
+    // Seitenaufrufen – nicht bei der Server Action, die die Anmeldung gerade
+    // abschließt, sonst verschwände die Anzeige der Wiederherstellungscodes.
+    if (umleitbar && pathname === '/team' && sitzungDiesesBetriebs) {
+      return NextResponse.redirect(new URL('/dashboard', request.url))
+    }
+    // Auf der Domain eines Betriebs gilt nur eine Sitzung genau dieses
+    // Betriebs – ein Cookie von Betrieb A öffnet nie das Dashboard von B.
+    if (pathname.startsWith('/dashboard')) {
+      if (!sitzungDiesesBetriebs) {
+        return NextResponse.redirect(new URL('/team', request.url))
+      }
+    }
+    return weiter()
+  }
+
+  // Ab hier: Plattform-Adresse.
+  if (
+    pathname.startsWith('/reservieren') ||
+    pathname.startsWith('/website') ||
+    pathname.startsWith('/bestellen') ||
+    pathname.startsWith('/gutschein/') ||
+    pathname.startsWith('/veranstaltung/') ||
+    pathname.startsWith('/team/') ||
+    // Impressum und Datenschutzerklärung der Plattform müssen ohne Login
+    // erreichbar sein (§ 5 DDG: "leicht erkennbar, unmittelbar erreichbar").
+    pathname === '/impressum' ||
+    pathname === '/datenschutz'
+  ) {
+    return weiter()
   }
 
   if (pathname === '/login') {
-    if (sitzung) {
-      return NextResponse.redirect(
-        new URL(sitzung.typ === 'plattform-admin' ? '/plattform-admin' : '/dashboard', request.url)
-      )
-    }
-    return NextResponse.next({ request: { headers: requestHeaders } })
+    if (umleitbar && sitzung?.typ === 'plattform-admin') return NextResponse.redirect(new URL('/plattform-admin', request.url))
+    return weiter()
   }
 
-  if (!sitzung) {
+  if (pathname.startsWith('/plattform-admin') && sitzung?.typ !== 'plattform-admin') {
     return NextResponse.redirect(new URL('/login', request.url))
   }
 
-  if (pathname.startsWith('/plattform-admin') && sitzung.typ !== 'plattform-admin') {
-    return NextResponse.redirect(new URL('/dashboard', request.url))
+  // Nur in der lokalen Entwicklung erreichbar (im Betrieb läuft das Dashboard
+  // unter der Domain des Betriebs, wo der Cookie gesetzt wurde).
+  if (pathname.startsWith('/dashboard') && sitzung?.typ !== 'inhaber') {
+    return NextResponse.redirect(new URL('/login', request.url))
   }
 
-  if (pathname.startsWith('/dashboard') && sitzung.typ !== 'organisation') {
-    return NextResponse.redirect(new URL('/plattform-admin', request.url))
-  }
-
-  return NextResponse.next({ request: { headers: requestHeaders } })
+  return weiter()
 }
 
 export const config = {

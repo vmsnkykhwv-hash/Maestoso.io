@@ -4,14 +4,18 @@ import { useState, useTransition } from 'react'
 import { Trash2 } from 'lucide-react'
 import { modulFreischaltenUmschalten, organisationAnlegen, organisationLoeschen } from './actions'
 import DomainVerwaltung from './DomainVerwaltung'
+import KontenVerwaltung, { EinladungsLink } from './KontenVerwaltung'
+import type { BenutzerUebersicht } from '@/lib/konten/einladung'
 import { MODULE, type ModulSchluessel } from '@/lib/module'
 import type { OrganisationMitFreischaltungen } from '@/lib/organisationen'
 import { cn } from '@/lib/utils'
 
 export default function OrganisationenVerwaltung({
   anfangsOrganisationen,
+  benutzerNachOrganisation,
 }: {
   anfangsOrganisationen: OrganisationMitFreischaltungen[]
+  benutzerNachOrganisation: Record<string, BenutzerUebersicht[]>
 }) {
   const [organisationen, setOrganisationen] = useState(anfangsOrganisationen)
   const [pending, startTransition] = useTransition()
@@ -19,23 +23,28 @@ export default function OrganisationenVerwaltung({
   const [loeschenBestaetigenId, setLoeschenBestaetigenId] = useState<string | null>(null)
 
   const [name, setName] = useState('')
-  const [loginCode, setLoginCode] = useState('')
-  const [pin, setPin] = useState('')
+  const [inhaberEmail, setInhaberEmail] = useState('')
+  const [inhaberName, setInhaberName] = useState('')
+  const [einladung, setEinladung] = useState<{ link: string; versendet: boolean } | null>(null)
+  const [neueBenutzer, setNeueBenutzer] = useState<Record<string, BenutzerUebersicht[]>>({})
 
   function erstellen() {
-    if (!name.trim() || !pin.trim()) return
+    if (!name.trim() || !inhaberEmail.trim()) return
     setFehler(null)
+    setEinladung(null)
     startTransition(async () => {
-      const ergebnis = await organisationAnlegen(name, loginCode, pin)
+      const ergebnis = await organisationAnlegen(name, inhaberEmail, inhaberName)
       if (ergebnis.fehler || !ergebnis.organisation) {
         setFehler(ergebnis.fehler ?? 'Organisation konnte nicht angelegt werden')
         return
       }
       const neu = ergebnis.organisation
       setOrganisationen((prev) => [neu, ...prev])
+      setNeueBenutzer((prev) => ({ ...prev, [neu.id]: ergebnis.benutzer ?? [] }))
+      setEinladung(ergebnis.einladung ?? null)
       setName('')
-      setLoginCode('')
-      setPin('')
+      setInhaberEmail('')
+      setInhaberName('')
     })
   }
 
@@ -67,16 +76,16 @@ export default function OrganisationenVerwaltung({
             className="rounded-xl border border-border bg-background px-3 py-2 text-sm"
           />
           <input
-            value={loginCode}
-            onChange={(e) => setLoginCode(e.target.value)}
-            placeholder="Zugangscode (leer = automatisch)"
+            value={inhaberName}
+            onChange={(e) => setInhaberName(e.target.value)}
+            placeholder="Name Inhaber*in"
             className="rounded-xl border border-border bg-background px-3 py-2 text-sm"
           />
           <input
-            value={pin}
-            onChange={(e) => setPin(e.target.value)}
-            placeholder="PIN (6–12 Ziffern)"
-            inputMode="numeric"
+            value={inhaberEmail}
+            onChange={(e) => setInhaberEmail(e.target.value)}
+            placeholder="E-Mail Inhaber*in"
+            type="email"
             className="rounded-xl border border-border bg-background px-3 py-2 text-sm"
           />
         </div>
@@ -85,8 +94,13 @@ export default function OrganisationenVerwaltung({
           disabled={pending}
           className="mt-3 rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground disabled:opacity-40"
         >
-          Anlegen
+          Anlegen und einladen
         </button>
+        {einladung && (
+          <div className="mt-3">
+            <EinladungsLink {...einladung} />
+          </div>
+        )}
       </div>
 
       <div className="space-y-3">
@@ -96,7 +110,6 @@ export default function OrganisationenVerwaltung({
             <div className="flex items-start justify-between gap-2">
               <div>
                 <h3 className="font-semibold">{o.name}</h3>
-                <p className="text-xs text-muted">Zugangscode: {o.loginCode}</p>
                 <p className="text-xs text-muted">Subdomain: {o.subdomain ?? '–'}</p>
               </div>
               {loeschenBestaetigenId === o.id ? (
@@ -123,6 +136,10 @@ export default function OrganisationenVerwaltung({
             </div>
 
             <div className="mt-4">
+              <KontenVerwaltung organisationId={o.id} anfangsBenutzer={benutzerNachOrganisation[o.id] ?? neueBenutzer[o.id] ?? []} />
+            </div>
+
+            <div className="mt-3">
               <DomainVerwaltung organisationId={o.id} anfangsDomain={o.customDomain} />
             </div>
 

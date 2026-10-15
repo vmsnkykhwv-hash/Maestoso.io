@@ -16,12 +16,28 @@ besetzt waren) ist markenrechtlich geprüft (EUIPO + DPMA, Klassen 09/42:
 keine aktive Marke in Software-relevanten Klassen) und die Domain
 `maestoso.io` ist frei.
 
-## Zwei Zugangsarten
+## Zugänge & Rollen
 
-- **Organisation** (ein Kunde/Interessent): meldet sich mit einem
-  Zugangscode + PIN an, landet im Dashboard mit allen Modulen als Kacheln.
-- **Plattform-Admin** (du): meldet sich mit einem eigenen PIN an, legt
-  Organisationen an und schaltet pro Organisation einzelne Module frei.
+- **Plattform-Admin** (du): unter `<plattform-domain>/login` mit E-Mail,
+  Passwort und Authenticator-App (TOTP). Legt Organisationen an, lädt die
+  Inhaberin bzw. den Inhaber ein, schaltet Module frei, verwaltet Domains und
+  setzt bei verlorenem Handy die 2FA eines Kontos zurück.
+- **Inhaber*in / Verwaltungskonto eines Betriebs**: unter der Adresse des
+  Betriebs, `<domain-des-betriebs>/team` (lokal `/team/<organisationId>`),
+  mit E-Mail, Passwort und Authenticator-App. Kommt per Einladungslink zum
+  Konto, kann weitere Verwaltungskonten einladen („Zugänge & Geräte“ im
+  Dashboard), auch von zu Hause. Einen geteilten Zugangscode gibt es nicht
+  mehr – die Adresse sagt, um welchen Betrieb es geht.
+- Ohne zweiten Faktor gibt es keine Sitzung, auch nicht beim ersten Mal
+  (2FA-Einrichtung ist Teil der Anmeldung). Wiederherstellungscodes für ein
+  verlorenes Handy, „Passwort vergessen“ per Mail-Link, Passwortänderung
+  meldet alle anderen Geräte ab (`sitzung_version`).
+- Sitzungen gelten nur auf der Domain, auf der sie entstanden sind, und nur
+  für genau diesen Betrieb (`proxy.ts` + `lib/session.ts`).
+- Technik: `lib/konten/` (Passwort, TOTP, Verschlüsselung der TOTP-Geheimnisse
+  mit `ZWEI_FAKTOR_SCHLUESSEL`, Wiederherstellungscodes, Einladungen),
+  Anmeldeablauf in `lib/konten/anmeldung.ts`, Oberfläche in
+  `components/anmeldung/`, Migration `0024`.
 
 Ein nicht freigeschaltetes Modul ist nicht gesperrt im Sinne von
 unsichtbar – die Organisation sieht und nutzt das echte Modul, nur mit
@@ -623,8 +639,11 @@ Mal unter einem Advisory-Lock direkt vor dem Insert laufen lassen (siehe
 
 - `NEXT_PUBLIC_SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY` – aus den
   Supabase-Projekteinstellungen (API).
-- `PLATTFORM_ADMIN_PIN` – frei wählbarer PIN für deinen eigenen
-  Plattform-Admin-Zugang.
+- `PLATTFORM_ADMIN_PIN` – nur noch für die einmalige Ersteinrichtung des
+  ersten Admin-Kontos unter `/login` (danach wirkungslos).
+- `ZWEI_FAKTOR_SCHLUESSEL` – 64 Hex-Zeichen (`openssl rand -hex 32`),
+  verschlüsselt die TOTP-Geheimnisse in der Datenbank. Nicht nachträglich
+  ändern, sonst müssen alle Konten 2FA neu einrichten.
 - `SESSION_SECRET` – langer Zufallsstring, z. B. `openssl rand -hex 32`.
 - `RESEND_API_KEY` / `RESEND_ABSENDER` – optional, für Bestätigungs-/
   Erinnerungsmails im Tischplan-Modul sowie die Bewertungsanfrage. Ohne Key
@@ -653,10 +672,12 @@ npm install
 npm run dev
 ```
 
-Unter `/login` im Tab "Plattform-Admin" mit `PLATTFORM_ADMIN_PIN`
-anmelden, dort eine erste Organisation anlegen (Name, Zugangscode, PIN).
-Mit diesen Zugangsdaten kann sich die Organisation dann im Tab "Kunde"
-anmelden.
+Unter `/login` beim ersten Mal mit `PLATTFORM_ADMIN_PIN` das Admin-Konto
+anlegen (E-Mail, Passwort, danach Authenticator-App einrichten). Im Admin
+eine Organisation mit Name und E-Mail der Inhaberin anlegen – ohne
+Resend-Konfiguration erscheint der Einladungslink zum Kopieren. Lokal (ohne
+`NEXT_PUBLIC_PLATTFORM_DOMAIN`) liegt die Team-Anmeldung unter
+`/team/<organisationId>`.
 
 ### 4. Deployment (Vercel)
 

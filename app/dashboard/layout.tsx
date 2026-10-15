@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation'
-import { getSitzung } from '@/lib/session'
+import { getBetriebsSitzung } from '@/lib/session'
 import { organisationsName } from '@/lib/tischplan/daten'
 import DashboardShell from '@/components/DashboardShell'
 import ThemeBereich from '@/components/ThemeBereich'
@@ -10,8 +10,8 @@ export const dynamic = 'force-dynamic'
 // Navigations-Overlay) – vorher musste jede Modul-Seite ihre eigene
 // Kopfzeile ohne Navigation zu den anderen Modulen rendern.
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const sitzung = await getSitzung()
-  if (!sitzung || sitzung.typ !== 'organisation') redirect('/login')
+  const sitzung = await getBetriebsSitzung()
+  if (!sitzung) redirect('/team')
 
   const organisationName = (await organisationsName(sitzung.organisationId)) ?? 'Eure Organisation'
 

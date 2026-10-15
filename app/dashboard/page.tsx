@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation'
 import { CalendarCheck, ShoppingBag, PackageSearch, Users } from 'lucide-react'
 import AppHeader from '@/components/AppHeader'
-import { getSitzung } from '@/lib/session'
+import { getBetriebsSitzung } from '@/lib/session'
 import { ladeFreischaltungen } from '@/lib/organisationen'
 import { MODULE } from '@/lib/module'
 import { heuteBerlin } from '@/lib/datum'
@@ -14,8 +14,8 @@ import ModulKachel from './ModulKachel'
 export const dynamic = 'force-dynamic'
 
 export default async function DashboardPage() {
-  const sitzung = await getSitzung()
-  if (!sitzung || sitzung.typ !== 'organisation') redirect('/login')
+  const sitzung = await getBetriebsSitzung()
+  if (!sitzung) redirect('/team')
 
   const heute = heuteBerlin()
   const [freischaltungen, reservierungen, bestellungen, pruefungen, schichten] = await Promise.all([

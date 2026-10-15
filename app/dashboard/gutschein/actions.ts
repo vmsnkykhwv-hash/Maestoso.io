@@ -1,6 +1,6 @@
 'use server'
 
-import { getSitzung } from '@/lib/session'
+import { getBetriebsSitzung } from '@/lib/session'
 import {
   gutscheinEinloesen,
   gutscheinStornieren,
@@ -18,8 +18,8 @@ import type { PaypalModus } from '@/lib/paypal/types'
 const PAYPAL_WEBHOOK_EVENTS = ['CHECKOUT.ORDER.APPROVED']
 
 async function organisationId(): Promise<string | null> {
-  const sitzung = await getSitzung()
-  if (!sitzung || sitzung.typ !== 'organisation') return null
+  const sitzung = await getBetriebsSitzung()
+  if (!sitzung) return null
   return sitzung.organisationId
 }
 

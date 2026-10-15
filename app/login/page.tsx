@@ -1,23 +1,30 @@
-import Logo from '@/components/Logo'
-import ThemeUmschalter from '@/components/ThemeUmschalter'
-import RechtlicheFusszeile from '@/components/rechtliches/RechtlicheFusszeile'
-import LoginForm from './LoginForm'
+import Anmeldung from '@/components/anmeldung/Anmeldung'
+import AnmeldeRahmen from '@/components/anmeldung/AnmeldeRahmen'
+import Ersteinrichtung from '@/components/anmeldung/Ersteinrichtung'
+import { einrichtungsDaten, zwischenstandLesen } from '@/lib/konten/anmeldung'
+import { adminVorhanden } from '@/lib/konten/daten'
 
-export default function LoginPage() {
+export const dynamic = 'force-dynamic'
+
+// Nur noch für den Plattform-Admin – Betriebe melden sich unter ihrer eigenen
+// Adresse an (<domain>/team).
+export default async function LoginPage() {
+  if (!(await adminVorhanden())) {
+    return (
+      <AnmeldeRahmen titel="Maestoso" untertitel="Ersteinrichtung Plattform-Admin">
+        <Ersteinrichtung />
+      </AnmeldeRahmen>
+    )
+  }
+
+  const zwischen = await zwischenstandLesen()
+  const stand = zwischen?.stand.art === 'admin' ? zwischen : null
+  const einrichtung = stand?.stand.schritt === 'einrichten' ? await einrichtungsDaten(stand.konto) : null
+  const schritt = stand && (stand.stand.schritt === '2fa' || einrichtung) ? stand.stand.schritt : 'passwort'
+
   return (
-    <main className="relative flex min-h-dvh flex-col items-center justify-center px-6">
-      <ThemeUmschalter className="absolute right-4 top-4" />
-      <div className="w-full max-w-sm space-y-8 text-center">
-        <div className="flex flex-col items-center gap-2">
-          <div className="flex items-center gap-2.5">
-            <Logo className="h-7 w-7 text-accent" />
-            <h1 className="font-display text-2xl font-semibold text-foreground">Maestoso</h1>
-          </div>
-          <p className="text-sm text-muted">Zugangscode + PIN oder Plattform-Admin-PIN eingeben</p>
-        </div>
-        <LoginForm />
-        <RechtlicheFusszeile />
-      </div>
-    </main>
+    <AnmeldeRahmen titel="Maestoso" untertitel="Plattform-Admin">
+      <Anmeldung art="admin" schritt={schritt} einrichtung={einrichtung} ziel="/plattform-admin" />
+    </AnmeldeRahmen>
   )
 }

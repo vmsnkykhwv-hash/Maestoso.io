@@ -6,7 +6,7 @@
 
 import { cookies } from 'next/headers'
 import { getServiceClient } from '@/lib/supabase/server'
-import { getSitzung } from '@/lib/session'
+import { getBetriebsSitzung } from '@/lib/session'
 import { pinHashPruefen } from '@/lib/pinHash'
 import { rateLimitFehlgeschlagen, rateLimitPruefen, rateLimitZuruecksetzen } from '@/lib/rateLimit'
 import { createMitarbeiterToken, MITARBEITER_COOKIE_NAME, MITARBEITER_MAX_AGE_SECONDS } from './auth'
@@ -15,8 +15,8 @@ import type { Mitarbeiter, MitarbeiterRolle, MitarbeiterTyp } from './types'
 const SPERRE_AB_VERSUCHEN = 5
 
 export async function mitarbeiterAnmelden(pin: string): Promise<{ fehler?: string; mitarbeiter?: Mitarbeiter }> {
-  const sitzung = await getSitzung()
-  if (!sitzung || sitzung.typ !== 'organisation') throw new Error('Nicht angemeldet')
+  const sitzung = await getBetriebsSitzung()
+  if (!sitzung) throw new Error('Nicht angemeldet')
   const organisationId = sitzung.organisationId
 
   // Gesperrt pro Organisation, nicht pro Mitarbeiter – der 4-stellige PIN

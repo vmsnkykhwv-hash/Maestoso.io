@@ -32,18 +32,25 @@ export default function DatenschutzPlattform() {
 
       <Abschnitt titel="Anmeldung und Nutzung">
         <p>
-          Zur Anmeldung verarbeiten wir den Zugangscode der Organisation und die PIN; PINs speichern wir nur als
-          kryptografischen Hash, nie im Klartext. Zum Schutz vor dem Durchprobieren von PINs zählen wir
-          Fehlversuche je Zugangscode und IP-Adresse und sperren nach zu vielen Versuchen vorübergehend.
-          Rechtsgrundlage ist die Erfüllung des Nutzungsvertrags mit dem Betrieb (Art. 6 Abs. 1 lit. b DSGVO) und
-          unser berechtigtes Interesse an einem sicheren Betrieb (Art. 6 Abs. 1 lit. f DSGVO).
+          Für persönliche Konten verarbeiten wir E-Mail-Adresse, Name und Passwort; das Passwort speichern wir nur als
+          kryptografischen Hash, nie im Klartext. Für die Zwei-Faktor-Anmeldung speichern wir ein verschlüsseltes
+          Geheimnis für deine Authenticator-App und Wiederherstellungscodes als Hash. Für Einladungen und „Passwort
+          vergessen“ schicken wir dir E-Mails mit einmal gültigen Links. Mitarbeitende melden sich an den Geräten des
+          Betriebs mit einer PIN an, die ebenfalls nur als Hash gespeichert wird.
+        </p>
+        <p>
+          Zum Schutz vor dem Durchprobieren von Passwörtern, Codes und PINs zählen wir Fehlversuche und sperren nach
+          zu vielen Versuchen vorübergehend. Rechtsgrundlage ist die Erfüllung des Nutzungsvertrags mit dem Betrieb
+          (Art. 6 Abs. 1 lit. b DSGVO) und unser berechtigtes Interesse an einem sicheren Betrieb (Art. 6 Abs. 1 lit.
+          f DSGVO).
         </p>
       </Abschnitt>
 
       <Abschnitt titel="Cookies">
         <p>Wir setzen ausschließlich Cookies, die für die von dir gewünschten Funktionen nötig sind:</p>
         <ul className="list-disc space-y-1 pl-5">
-          <li>Sitzungs-Cookies, die dich nach der Anmeldung angemeldet halten (Organisation bzw. Mitarbeiter*in),</li>
+          <li>Sitzungs-Cookies, die dich nach der Anmeldung angemeldet halten (Verwaltungskonto bzw. Mitarbeiter*in),</li>
+          <li>ein kurzlebiges Cookie (10 Minuten) für den Schritt zwischen Passwort und Zwei-Faktor-Code,</li>
           <li>ein Cookie, der sich deine Wahl zwischen hellem und dunklem Design merkt.</li>
         </ul>
         <p>

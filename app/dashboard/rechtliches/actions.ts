@@ -1,12 +1,12 @@
 'use server'
 
-import { getSitzung } from '@/lib/session'
+import { getBetriebsSitzung } from '@/lib/session'
 import { rechtlicheAngabenSpeichern } from '@/lib/rechtliches/daten'
 import type { RechtlicheAngaben } from '@/lib/rechtliches/types'
 
 export async function rechtlicheAngabenSpeichernAktion(angaben: RechtlicheAngaben): Promise<{ fehler?: string }> {
-  const sitzung = await getSitzung()
-  if (!sitzung || sitzung.typ !== 'organisation') return { fehler: 'Nicht angemeldet' }
+  const sitzung = await getBetriebsSitzung()
+  if (!sitzung) return { fehler: 'Nicht angemeldet' }
 
   // Nur ganz grob – ein Tippfehler in der Impressums-Mail wäre schlimmer als
   // keine Prüfung, eine echte Zustellbarkeitsprüfung gibt es hier aber nicht.

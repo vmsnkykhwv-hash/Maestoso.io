@@ -1,11 +1,7 @@
 // Formatregeln für PINs – bewusst getrennt von lib/pinHash.ts (node:crypto),
 // damit sie auch in Client-Komponenten für Hinweise nutzbar sind.
 //
-// Organisations-PINs schützen das ganze Dashboard eines Betriebs und sind
-// deshalb länger als Mitarbeiter-PINs, die täglich am Tresen eingetippt
-// werden. Gilt nur beim Anlegen/Ändern – bestehende kürzere PINs
-// funktionieren weiter.
-export const ORGANISATION_PIN = { min: 6, max: 12 }
+// Gilt nur beim Anlegen/Ändern – bestehende kürzere PINs funktionieren weiter.
 export const MITARBEITER_PIN = { min: 4, max: 8 }
 
 export function pinFehler(pin: string, regel: { min: number; max: number }): string | null {

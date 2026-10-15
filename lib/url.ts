@@ -55,3 +55,14 @@ export async function plattformUrl(): Promise<string> {
   if (plattformDomain) return `https://${plattformDomain}`
   return herkunftUrl()
 }
+
+// Absolute Adresse im Team-Bereich eines Betriebs, für E-Mails (Einladung,
+// Passwort vergessen) – die müssen auf der Domain landen, auf der sich das
+// Team später auch anmeldet, sonst gälte die Sitzung auf der falschen Domain.
+export async function teamUrl(organisationId: string, pfad: string): Promise<string> {
+  const plattformDomain = process.env.NEXT_PUBLIC_PLATTFORM_DOMAIN
+  const organisation = await ladeHostOrganisationPerId(organisationId)
+  const host = organisation && oeffentlicherHost(organisation, plattformDomain)
+  if (host) return `https://${host}/team${pfad}`
+  return `${await herkunftUrl(organisationId)}/team/${organisationId}${pfad}`
+}

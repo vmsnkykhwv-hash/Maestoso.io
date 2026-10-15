@@ -1,6 +1,6 @@
 'use server'
 
-import { getSitzung } from '@/lib/session'
+import { getBetriebsSitzung } from '@/lib/session'
 import {
   bewertungsEinstellungenSpeichern,
   ladeBewertungsEinstellungen,
@@ -13,8 +13,8 @@ import { berechneKlickrate, berechneGoogleTrend, type KlickrateAuswertung, type 
 import type { BewertungsEinstellungen, BewertungsListenEintrag } from '@/lib/bewertung/types'
 
 async function organisationIdOderFehler(): Promise<string> {
-  const sitzung = await getSitzung()
-  if (!sitzung || sitzung.typ !== 'organisation') throw new Error('Nicht angemeldet')
+  const sitzung = await getBetriebsSitzung()
+  if (!sitzung) throw new Error('Nicht angemeldet')
   return sitzung.organisationId
 }
 

@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
 import AppHeader from '@/components/AppHeader'
-import { getSitzung } from '@/lib/session'
+import { getBetriebsSitzung } from '@/lib/session'
 import { getServiceClient } from '@/lib/supabase/server'
 import { ladeFreischaltungen } from '@/lib/organisationen'
 import { ladeBilder, ladeInhalt, ladeMenuEintraege, ladeMenuKategorien } from '@/lib/website/daten'
@@ -10,8 +10,8 @@ import WebsiteApp from './WebsiteApp'
 export const dynamic = 'force-dynamic'
 
 export default async function WebsitePage() {
-  const sitzung = await getSitzung()
-  if (!sitzung || sitzung.typ !== 'organisation') redirect('/login')
+  const sitzung = await getBetriebsSitzung()
+  if (!sitzung) redirect('/team')
 
   const supabase = getServiceClient()
   const [freischaltungen, inhalt, heroBilder, galerieBilder, kategorien, eintraege, { data: organisation }] = await Promise.all([

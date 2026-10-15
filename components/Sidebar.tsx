@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { LogOut, Scale } from 'lucide-react'
+import { KeyRound, LogOut, Scale } from 'lucide-react'
 import { logout } from '@/app/actions'
 import { MODULE } from '@/lib/module'
 import Logo from './Logo'
@@ -49,6 +49,15 @@ export default function Sidebar({ organisationName }: { organisationName: string
         >
           <Scale className="h-3.5 w-3.5" />
           Impressum & Datenschutz
+        </Link>
+        <Link
+          href="/dashboard/zugaenge"
+          className={`flex min-h-9 items-center gap-2 px-2 text-xs hover:text-sidebar-foreground ${
+            pathname.startsWith('/dashboard/zugaenge') ? 'font-semibold text-accent' : 'text-sidebar-foreground/70'
+          }`}
+        >
+          <KeyRound className="h-3.5 w-3.5" />
+          Zugänge & Geräte
         </Link>
         <form action={logout}>
           <button

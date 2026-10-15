@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
 import AppHeader from '@/components/AppHeader'
-import { getSitzung } from '@/lib/session'
+import { getBetriebsSitzung } from '@/lib/session'
 import { ladeFreischaltungen } from '@/lib/organisationen'
 import { ladeEinstellungen, ladeTische } from '@/lib/tischplan/daten'
 import TischplanApp from './TischplanApp'
@@ -9,8 +9,8 @@ import { oeffentlicheUrl } from '@/lib/url'
 export const dynamic = 'force-dynamic'
 
 export default async function TischplanPage() {
-  const sitzung = await getSitzung()
-  if (!sitzung || sitzung.typ !== 'organisation') redirect('/login')
+  const sitzung = await getBetriebsSitzung()
+  if (!sitzung) redirect('/team')
 
   const [freischaltungen, einstellungen, tische] = await Promise.all([
     ladeFreischaltungen(sitzung.organisationId),

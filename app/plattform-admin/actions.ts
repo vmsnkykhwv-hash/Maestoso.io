@@ -1,9 +1,9 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { randomBytes } from 'node:crypto'
-import { pinHashErstellen } from '@/lib/pinHash'
-import { ORGANISATION_PIN, pinFehler } from '@/lib/pinRegeln'
+import { benutzerAnlegen, ladeBenutzerDerOrganisation, type BenutzerUebersicht } from '@/lib/konten/einladung'
+import { einladungVerschicken } from '@/lib/konten/einladungVersand'
+import { ladeKonto, sitzungenBeenden, totpZuruecksetzen } from '@/lib/konten/daten'
 import { getSitzung } from '@/lib/session'
 import { getServiceClient } from '@/lib/supabase/server'
 import { MODULE, type ModulSchluessel } from '@/lib/module'
@@ -21,73 +21,57 @@ async function plattformAdminOderFehler() {
   return sitzung
 }
 
-const ZUGANGSCODE_FORMAT = /^[a-z0-9-]{6,40}$/
-
-// Ohne eigene Vorgabe: Namensbestandteil + 6 Zufallszeichen. Der Name
-// allein (z. B. "musterbetrieb") wäre leicht zu erraten, und Zugangscode +
-// PIN sind die einzige Hürde vor dem Dashboard.
-function zugangscodeErzeugen(name: string): string {
-  const basis =
-    name
-      .toLowerCase()
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-+|-+$/g, '')
-      .slice(0, 20) || 'betrieb'
-  const zeichen = 'abcdefghjkmnpqrstuvwxyz23456789'
-  const zufall = Array.from(randomBytes(6), (b) => zeichen[b % zeichen.length]).join('')
-  return `${basis}-${zufall}`
-}
-
 // Gibt Fehler als Wert zurück statt zu werfen: geworfene Fehlermeldungen
 // aus Server Actions ersetzt Next.js im Produktivbetrieb durch einen
 // generischen Text, der Admin sähe dann nicht, was falsch war.
+//
+// Statt Zugangscode + PIN bekommt jede neue Organisation ein persönliches
+// Konto für die Inhaberin bzw. den Inhaber, die/der per Einladungslink ein
+// Passwort festlegt und 2FA einrichtet.
 export async function organisationAnlegen(
   name: string,
-  loginCode: string,
-  pin: string
-): Promise<{ fehler?: string; organisation?: OrganisationMitFreischaltungen }> {
+  inhaberEmail: string,
+  inhaberName: string
+): Promise<{
+  fehler?: string
+  organisation?: OrganisationMitFreischaltungen
+  einladung?: { link: string; versendet: boolean }
+  benutzer?: BenutzerUebersicht[]
+}> {
   await plattformAdminOderFehler()
 
   if (!name.trim()) return { fehler: 'Bitte einen Namen angeben.' }
-  const code = loginCode.trim().toLowerCase() || zugangscodeErzeugen(name)
-  if (!ZUGANGSCODE_FORMAT.test(code)) {
-    return { fehler: 'Zugangscode: 6 bis 40 Zeichen, nur Kleinbuchstaben, Ziffern und Bindestriche.' }
-  }
-  const formatFehler = pinFehler(pin, ORGANISATION_PIN)
-  if (formatFehler) return { fehler: formatFehler }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(inhaberEmail.trim())) return { fehler: 'Bitte eine gültige E-Mail-Adresse für den Inhaber angeben.' }
 
   const supabase = getServiceClient()
-  const pinHash = await pinHashErstellen(pin)
   const subdomain = await subdomainVorschlagen(name)
 
   const { data, error } = await supabase
     .from('organisationen')
-    .insert({ name: name.trim(), login_code: code, pin_hash: pinHash, subdomain })
-    .select('id, name, login_code, erstellt_at, subdomain, custom_domain')
+    .insert({ name: name.trim(), subdomain })
+    .select('id, name, erstellt_at, subdomain, custom_domain')
     .single()
 
-  if (error?.code === '23505') return { fehler: 'Dieser Zugangscode ist schon vergeben.' }
   if (error || !data) return { fehler: error?.message ?? 'Organisation konnte nicht angelegt werden' }
 
   const { error: freischaltungenError } = await supabase
     .from('freischaltungen')
     .insert(MODULE.map((m) => ({ organisation_id: data.id, modul: m.schluessel, freigeschaltet: false })))
+  const inhaber = freischaltungenError ? null : await benutzerAnlegen(data.id as string, inhaberEmail, inhaberName)
 
-  if (freischaltungenError) {
-    // Ohne Freischaltungs-Zeilen wäre die Organisation nur halb angelegt –
-    // lieber ganz zurückrollen und den Admin es erneut versuchen lassen.
+  if (freischaltungenError || !inhaber?.benutzerId) {
+    // Ohne Freischaltungen bzw. Inhaber-Konto wäre die Organisation nur halb
+    // angelegt – lieber ganz zurückrollen und es erneut versuchen lassen.
     await supabase.from('organisationen').delete().eq('id', data.id)
-    return { fehler: freischaltungenError.message }
+    return { fehler: freischaltungenError?.message ?? inhaber?.fehler }
   }
 
+  const einladung = await einladungVerschicken(data.id as string, inhaber.benutzerId, inhaberEmail)
   revalidatePath('/plattform-admin')
 
   const organisation: OrganisationMitFreischaltungen = {
     id: data.id as string,
     name: data.name as string,
-    loginCode: data.login_code as string,
     erstelltAt: data.erstellt_at as string,
     subdomain: data.subdomain as string | null,
     customDomain: data.custom_domain as string | null,
@@ -96,7 +80,7 @@ export async function organisationAnlegen(
       boolean
     >,
   }
-  return { organisation }
+  return { organisation, einladung, benutzer: await ladeBenutzerDerOrganisation(organisation.id) }
 }
 
 // Eigene Domain eines Kunden: ausschließlich hier, nie durch die
@@ -242,4 +226,63 @@ export async function organisationLoeschen(organisationId: string) {
   const { error } = await supabase.from('organisationen').delete().eq('id', organisationId)
   if (error) throw new Error(error.message)
   revalidatePath('/plattform-admin')
+}
+
+// Weiteres Inhaber-Konto bzw. neue Einladung, z. B. wenn die erste Mail nie
+// ankam. Gibt den Link zum Kopieren zurück.
+export async function inhaberEinladenAktion(
+  organisationId: string,
+  email: string,
+  name: string
+): Promise<{ fehler?: string; link?: string; versendet?: boolean; benutzer?: BenutzerUebersicht[] }> {
+  await plattformAdminOderFehler()
+  const angelegt = await benutzerAnlegen(organisationId, email, name)
+  if (!angelegt.benutzerId) return { fehler: angelegt.fehler }
+  const einladung = await einladungVerschicken(organisationId, angelegt.benutzerId, email)
+  return { ...einladung, benutzer: await ladeBenutzerDerOrganisation(organisationId) }
+}
+
+async function benutzerDerOrganisation(organisationId: string, benutzerId: string) {
+  const konto = await ladeKonto('benutzer', benutzerId)
+  if (!konto || konto.organisationId !== organisationId) return null
+  return konto
+}
+
+export async function einladungErneuernAktion(
+  organisationId: string,
+  benutzerId: string
+): Promise<{ fehler?: string; link?: string; versendet?: boolean }> {
+  await plattformAdminOderFehler()
+  const konto = await benutzerDerOrganisation(organisationId, benutzerId)
+  if (!konto) return { fehler: 'Konto nicht gefunden.' }
+  if (konto.passwortHash) return { fehler: 'Das Konto ist schon eingerichtet – für ein vergessenes Passwort gibt es "Passwort vergessen".' }
+  return einladungVerschicken(organisationId, benutzerId, konto.email)
+}
+
+// Handy mit Authenticator-App und Wiederherstellungscodes verloren: 2FA
+// zurücksetzen. Das beendet alle Sitzungen; bei der nächsten Anmeldung muss
+// 2FA neu eingerichtet werden. Vorher die Identität der Person prüfen (z. B.
+// Rückruf unter bekannter Nummer) – das ist die einzige Hintertür an 2FA
+// vorbei.
+export async function zweiFaktorZuruecksetzenAktion(organisationId: string, benutzerId: string): Promise<{ fehler?: string; benutzer?: BenutzerUebersicht[] }> {
+  await plattformAdminOderFehler()
+  const konto = await benutzerDerOrganisation(organisationId, benutzerId)
+  if (!konto) return { fehler: 'Konto nicht gefunden.' }
+  await totpZuruecksetzen(konto)
+  return { benutzer: await ladeBenutzerDerOrganisation(organisationId) }
+}
+
+export async function benutzerAktivSetzenAktion(
+  organisationId: string,
+  benutzerId: string,
+  aktiv: boolean
+): Promise<{ fehler?: string; benutzer?: BenutzerUebersicht[] }> {
+  await plattformAdminOderFehler()
+  const konto = await benutzerDerOrganisation(organisationId, benutzerId)
+  if (!konto) return { fehler: 'Konto nicht gefunden.' }
+  const supabase = getServiceClient()
+  const { error } = await supabase.from('benutzer').update({ aktiv }).eq('id', benutzerId).eq('organisation_id', organisationId)
+  if (error) return { fehler: error.message }
+  if (!aktiv) await sitzungenBeenden(konto)
+  return { benutzer: await ladeBenutzerDerOrganisation(organisationId) }
 }

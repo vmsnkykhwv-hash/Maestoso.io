@@ -1,6 +1,6 @@
 'use server'
 
-import { getSitzung } from '@/lib/session'
+import { getBetriebsSitzung } from '@/lib/session'
 import { bewertungsanfragePlanen, bewertungsanfrageStornierenFuerReservierung } from '@/lib/bewertung/aktionen'
 import {
   ausnahmeLoeschen,
@@ -27,8 +27,8 @@ import { berechneAuslastung, type TischplanAuswertung } from '@/lib/tischplan/au
 import type { Blockierung, Einstellungen, Reservierung, ReservierungAusnahme, ReservierungStatus, Tisch } from '@/lib/tischplan/types'
 
 async function organisationIdOderFehler(): Promise<string> {
-  const sitzung = await getSitzung()
-  if (!sitzung || sitzung.typ !== 'organisation') throw new Error('Nicht angemeldet')
+  const sitzung = await getBetriebsSitzung()
+  if (!sitzung) throw new Error('Nicht angemeldet')
   return sitzung.organisationId
 }
 

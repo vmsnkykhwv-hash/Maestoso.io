@@ -1,6 +1,6 @@
 'use server'
 
-import { getSitzung } from '@/lib/session'
+import { getBetriebsSitzung } from '@/lib/session'
 import {
   bestellEinstellungenSpeichern,
   bestellungenGesehenMarkieren,
@@ -20,8 +20,8 @@ import { berechneBestellAnalyse, type BestellungAuswertung } from '@/lib/bestell
 import type { Bestellung, BestellEinstellungen, BestellKanal, BestellStatus } from '@/lib/bestellung/types'
 
 async function organisationIdOderFehler(): Promise<string> {
-  const sitzung = await getSitzung()
-  if (!sitzung || sitzung.typ !== 'organisation') throw new Error('Nicht angemeldet')
+  const sitzung = await getBetriebsSitzung()
+  if (!sitzung) throw new Error('Nicht angemeldet')
   return sitzung.organisationId
 }
 

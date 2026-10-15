@@ -12,6 +12,10 @@ export const GAESTE_ROUTEN = ['reservieren', 'bestellen', 'gutschein', 'veransta
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
+export function istUuid(wert: string | undefined): boolean {
+  return !!wert && UUID.test(wert)
+}
+
 function istGaesteRoute(segment: string | undefined): boolean {
   return !!segment && (GAESTE_ROUTEN as readonly string[]).includes(segment)
 }
@@ -51,7 +55,7 @@ export function internerPfad(organisationId: string, oeffentlich: string): strin
 // Domain des Betriebs umgeleitet werden.
 export function altePlattformAdresse(pathname: string): string | null {
   const teile = pathname.split('/').filter(Boolean)
-  if ((teile[0] === 'website' || istGaesteRoute(teile[0])) && teile[1] && UUID.test(teile[1])) return teile[1]
+  if ((teile[0] === 'website' || teile[0] === 'team' || istGaesteRoute(teile[0])) && teile[1] && UUID.test(teile[1])) return teile[1]
   return null
 }
 
@@ -59,3 +63,12 @@ export function altePlattformAdresse(pathname: string): string | null {
 // Domain des Betriebs kam – dann bauen sie kurze Links (/impressum) statt
 // der internen (/website/<id>/impressum).
 export const ORG_HOST_HEADER = 'x-maestoso-org'
+
+// /team, /team/einladung … auf der Domain des Betriebs → interne Route.
+// Eine mitgeschickte ID wird wie bei den Gästepfaden verworfen.
+export function internerTeamPfad(organisationId: string, pathname: string): string | null {
+  const teile = pathname.split('/').filter(Boolean)
+  if (teile[0] !== 'team') return null
+  const rest = teile.slice(istUuid(teile[1]) ? 2 : 1).join('/')
+  return `/team/${organisationId}${rest ? `/${rest}` : ''}`
+}
