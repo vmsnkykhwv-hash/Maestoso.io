@@ -16,7 +16,14 @@ export async function proxy(request: NextRequest) {
   if (plattformDomain && host !== plattformDomain && host !== `www.${plattformDomain}`) {
     const organisationId = await ladeOrganisationIdFuerHost(host, plattformDomain)
     if (organisationId) {
-      return NextResponse.rewrite(new URL(`/website/${organisationId}`, request.url))
+      // Impressum/Datenschutz des Betriebs auch auf seiner eigenen Domain
+      // (/impressum bzw. die Links aus der Fußzeile, /website/<id>/impressum).
+      // Die ID aus dem Pfad wird dabei bewusst ignoriert und durch die zum
+      // Host gehörende ersetzt – sonst ließe sich auf musterbetrieb.de das
+      // Impressum eines fremden Betriebs anzeigen.
+      const rechtsseite = pathname.match(/^\/(?:website\/[^/]+\/)?(impressum|datenschutz)$/)?.[1]
+      const ziel = `/website/${organisationId}${rechtsseite ? `/${rechtsseite}` : ''}`
+      return NextResponse.rewrite(new URL(ziel, request.url))
     }
   }
 
@@ -33,6 +40,12 @@ export async function proxy(request: NextRequest) {
     pathname.startsWith('/gutschein/') ||
     pathname.startsWith('/veranstaltung/')
   ) {
+    return NextResponse.next()
+  }
+
+  // Impressum und Datenschutzerklärung der Plattform müssen ohne Login
+  // erreichbar sein (§ 5 DDG: "leicht erkennbar, unmittelbar erreichbar").
+  if (pathname === '/impressum' || pathname === '/datenschutz') {
     return NextResponse.next()
   }
 

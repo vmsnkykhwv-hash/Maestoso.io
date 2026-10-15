@@ -438,6 +438,35 @@ Chat-Verlauf.
   Formulare (`lib/rateLimit.ts`), schickt eine Eingangsbestätigung an die
   anfragende Person plus optional eine Benachrichtigung ans Personal.
 
+## Rechtliches (Impressum & Datenschutz)
+
+Zwei Ebenen, weil die Verantwortung unterschiedlich verteilt ist:
+
+- **Plattform** (`/impressum`, `/datenschutz`): Maestoso als Anbieter
+  gegenüber den Betrieben (Login, Dashboard, Plattform-Admin). Die
+  Betreiberdaten stehen in `lib/rechtliches/plattform.ts` und sind noch
+  **Platzhalter in eckigen Klammern**. Vor dem Livegang dort eintragen:
+  Name/Firma, Anschrift, Kontakt, ggf. Register und USt-IdNr., außerdem die
+  Supabase-Region und die Anschriften von Supabase/Resend laut deren DPA
+  (Vercel-Anschrift gegenprüfen).
+- **Je Betrieb** (`/website/<id>/impressum`, `/website/<id>/datenschutz`, auf
+  der eigenen Domain auch `/impressum` und `/datenschutz`, siehe `proxy.ts`):
+  Auf den Gästeseiten ist der Betrieb Anbieter und Verantwortlicher, Maestoso
+  nur Auftragsverarbeiter. Jeder Betrieb trägt seine Angaben im Dashboard
+  unter „Impressum & Datenschutz“ ein (Sidebar unten, Tabelle
+  `rechtliche_angaben`, Migration `0022`). Die Datenschutzerklärung zeigt nur
+  Abschnitte für freigeschaltete Module. Solange Name, Anschrift oder E-Mail
+  fehlen, zeigen die Seiten statt eines halben Textes einen Hinweis.
+- Alle Gästeseiten und das Login verlinken unten auf die passenden Seiten
+  (`components/rechtliches/RechtlicheFusszeile.tsx`).
+- Dienstleister (Vercel, Supabase, Resend) stehen zentral in
+  `DIENSTLEISTER` (`lib/rechtliches/plattform.ts`) und erscheinen in beiden
+  Datenschutzerklärungen. Ein neuer Dienstleister im Code muss dort ergänzt
+  werden.
+- Die Texte sind eine Vorlage, keine Rechtsberatung, und sollten vor dem
+  Livegang einmal anwaltlich geprüft werden. Offen ist außerdem noch der
+  AVV mit jeder Organisation.
+
 ## Preismodell
 
 Noch nicht im Code abgebildet (keine Abrechnungslogik, keine Preisseite) –
@@ -869,9 +898,10 @@ anmelden.
     "Markenauftritt & Layout" oben).
 11. **Vor dem echten Livegang noch offen** (siehe Setup-Checkliste +
     Rechtliches):
-    - Impressum, Datenschutzerklärung, Auftragsverarbeitungsvertrag (AVV)
-      mit jeder Organisation – aktuell nirgends im Projekt vorhanden,
-      rechtlich aber Pflicht, bevor echte Kunden Daten eingeben.
+    - ~~Impressum, Datenschutzerklärung~~ – als Vorlage umgesetzt (siehe
+      "Rechtliches" oben). Noch offen: Platzhalter in
+      `lib/rechtliches/plattform.ts` füllen, anwaltliche Prüfung der Texte,
+      Auftragsverarbeitungsvertrag (AVV) mit jeder Organisation.
     - ~~Domain-/Markenprüfung~~ – erledigt, Name auf "Maestoso" geändert
       (siehe "Aktueller Stand" oben), Domain `maestoso.io` tatsächlich
       registrieren, sobald es an den Live-Betrieb geht.

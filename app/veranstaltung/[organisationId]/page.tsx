@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation'
 import { organisationOeffentlichLadenAktion } from './actions'
 import AnfrageFormular from './AnfrageFormular'
+import RechtlicheFusszeile from '@/components/rechtliches/RechtlicheFusszeile'
 
 export const dynamic = 'force-dynamic'
 
@@ -26,6 +27,7 @@ export default async function VeranstaltungAnfragePage({ params }: { params: Pro
             Veranstaltungsanfragen sind aktuell nicht möglich. Bitte direkt Kontakt aufnehmen.
           </p>
         )}
+        <RechtlicheFusszeile organisationId={organisationId} className="mt-12" />
       </main>
     </div>
   )

@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { ladeGutschein } from '@/lib/gutschein/daten'
 import { gutscheinPaypalZahlungErfassen } from '@/lib/gutschein/zahlung'
+import RechtlicheFusszeile from '@/components/rechtliches/RechtlicheFusszeile'
 
 export const dynamic = 'force-dynamic'
 
@@ -38,6 +39,7 @@ export default async function GutscheinErfolgPage({
         <Link href={`/gutschein/${organisationId}`} className="text-sm font-medium text-accent">
           Zurück
         </Link>
+        <RechtlicheFusszeile organisationId={organisationId} className="mt-12" />
       </main>
     </div>
   )

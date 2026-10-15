@@ -1,5 +1,6 @@
 import Logo from '@/components/Logo'
 import ThemeUmschalter from '@/components/ThemeUmschalter'
+import RechtlicheFusszeile from '@/components/rechtliches/RechtlicheFusszeile'
 import LoginForm from './LoginForm'
 
 export default function LoginPage() {
@@ -15,6 +16,7 @@ export default function LoginPage() {
           <p className="text-sm text-muted">Zugangscode + PIN oder Plattform-Admin-PIN eingeben</p>
         </div>
         <LoginForm />
+        <RechtlicheFusszeile />
       </div>
     </main>
   )

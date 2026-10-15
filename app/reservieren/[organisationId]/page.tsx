@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation'
 import { organisationOeffentlichLadenAktion } from './actions'
 import BuchungsFormular from './BuchungsFormular'
+import RechtlicheFusszeile from '@/components/rechtliches/RechtlicheFusszeile'
 
 export const dynamic = 'force-dynamic'
 
@@ -15,6 +16,7 @@ export default async function ReservierenPage({ params }: { params: Promise<{ or
         <h1 className="mb-1 text-xl font-semibold">Tisch reservieren bei {organisation.name}</h1>
         <p className="mb-6 text-sm text-muted">Wählt Datum, Uhrzeit und Personenzahl – ihr erhaltet sofort eine Bestätigung.</p>
         <BuchungsFormular organisationId={organisationId} />
+        <RechtlicheFusszeile organisationId={organisationId} className="mt-12" />
       </main>
     </div>
   )

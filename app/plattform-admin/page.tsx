@@ -3,6 +3,7 @@ import AppHeader from '@/components/AppHeader'
 import { getSitzung } from '@/lib/session'
 import { ladeOrganisationen } from '@/lib/organisationen'
 import OrganisationenVerwaltung from './OrganisationenVerwaltung'
+import RechtlicheFusszeile from '@/components/rechtliches/RechtlicheFusszeile'
 
 export const dynamic = 'force-dynamic'
 
@@ -18,6 +19,7 @@ export default async function PlattformAdminPage() {
       <main className="mx-auto w-full max-w-3xl flex-1 p-6">
         <OrganisationenVerwaltung anfangsOrganisationen={organisationen} />
       </main>
+      <RechtlicheFusszeile className="pb-6" />
     </div>
   )
 }

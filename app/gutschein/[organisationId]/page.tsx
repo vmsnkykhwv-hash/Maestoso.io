@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation'
 import { gutscheinSeiteLadenAktion } from './actions'
 import GutscheinFormular from './GutscheinFormular'
+import RechtlicheFusszeile from '@/components/rechtliches/RechtlicheFusszeile'
 
 export const dynamic = 'force-dynamic'
 
@@ -25,6 +26,7 @@ export default async function GutscheinPage({ params }: { params: Promise<{ orga
         ) : (
           <p className="text-sm text-muted">Hier werden aktuell keine Gutscheine verkauft.</p>
         )}
+        <RechtlicheFusszeile organisationId={organisationId} className="mt-12" />
       </main>
     </div>
   )

@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation'
 import { organisationOeffentlichLadenAktion } from './actions'
 import BestellFormular from './BestellFormular'
+import RechtlicheFusszeile from '@/components/rechtliches/RechtlicheFusszeile'
 
 export const dynamic = 'force-dynamic'
 
@@ -15,6 +16,7 @@ export default async function BestellenPage({ params }: { params: Promise<{ orga
         <h1 className="mb-1 text-xl font-semibold">Online bestellen bei {organisation.name}</h1>
         <p className="mb-6 text-sm text-muted">Zum Abholen oder Liefern – wählt Gerichte, Zeit und Kontaktdaten.</p>
         <BestellFormular organisationId={organisationId} />
+        <RechtlicheFusszeile organisationId={organisationId} className="mt-12" />
       </main>
     </div>
   )

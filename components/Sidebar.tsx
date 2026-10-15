@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { LogOut } from 'lucide-react'
+import { LogOut, Scale } from 'lucide-react'
 import { logout } from '@/app/actions'
 import { MODULE } from '@/lib/module'
 import Logo from './Logo'
@@ -41,6 +41,15 @@ export default function Sidebar({ organisationName }: { organisationName: string
 
       <div className="flex flex-col gap-2 border-t border-sidebar-foreground/15 pt-4">
         <p className="truncate px-2 text-sm font-semibold">{organisationName}</p>
+        <Link
+          href="/dashboard/rechtliches"
+          className={`flex min-h-9 items-center gap-2 px-2 text-xs hover:text-sidebar-foreground ${
+            pathname.startsWith('/dashboard/rechtliches') ? 'font-semibold text-accent' : 'text-sidebar-foreground/70'
+          }`}
+        >
+          <Scale className="h-3.5 w-3.5" />
+          Impressum & Datenschutz
+        </Link>
         <form action={logout}>
           <button
             type="submit"
@@ -50,6 +59,16 @@ export default function Sidebar({ organisationName }: { organisationName: string
             Abmelden
           </button>
         </form>
+        {/* Impressum/Datenschutz der Plattform selbst – die Angaben des
+            Betriebs pflegt der Link oben. */}
+        <div className="flex gap-3 px-2 pt-1 text-[11px] text-sidebar-foreground/50">
+          <Link href="/impressum" className="hover:text-sidebar-foreground">
+            Impressum
+          </Link>
+          <Link href="/datenschutz" className="hover:text-sidebar-foreground">
+            Datenschutz
+          </Link>
+        </div>
       </div>
     </nav>
   )

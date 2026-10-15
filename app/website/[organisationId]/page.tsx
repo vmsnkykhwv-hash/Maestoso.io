@@ -7,6 +7,7 @@ import { ladeBestellEinstellungen } from '@/lib/bestellung/daten'
 import { kanalAktiv } from '@/lib/bestellung/regeln'
 import BuchungsFormular from '@/app/reservieren/[organisationId]/BuchungsFormular'
 import BestellFormular from '@/app/bestellen/[organisationId]/BestellFormular'
+import RechtlicheFusszeile from '@/components/rechtliches/RechtlicheFusszeile'
 
 export const dynamic = 'force-dynamic'
 
@@ -176,6 +177,7 @@ export default async function WebsitePage({ params }: { params: Promise<{ organi
           )}
         </section>
       </main>
+      <RechtlicheFusszeile organisationId={organisationId} className="border-t border-border py-6" />
     </div>
   )
 }
