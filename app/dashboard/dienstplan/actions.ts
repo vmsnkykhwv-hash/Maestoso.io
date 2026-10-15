@@ -21,6 +21,7 @@ import {
 import { pruefeZuweisung } from '@/lib/dienstplan/regeln'
 import { heuteBerlin } from '@/lib/datum'
 import type { Schicht, TauschAnfrage, Verfuegbarkeit } from '@/lib/dienstplan/types'
+import { mitProtokoll } from '@/lib/protokoll'
 
 // Planen, bestätigen, Team-Verfügbarkeit: nur Verwaltungskonto.
 async function leitungOderFehler() {
@@ -84,7 +85,7 @@ export async function schichtErstellenAktion(input: {
   const konflikt = await pruefeKonfliktfrei(sitzung.organisationId, input)
   if (konflikt) return { fehler: konflikt }
 
-  return schichtErstellen(sitzung.organisationId, input)
+  return mitProtokoll(schichtErstellen(sitzung.organisationId, input), 'dienstplan', 'Schicht angelegt', `${input.datum} ${input.beginn}–${input.ende}`, null)
 }
 
 export async function schichtAktualisierenAktion(
@@ -110,12 +111,12 @@ export async function schichtAktualisierenAktion(
     if (konflikt) return { fehler: konflikt }
   }
 
-  return schichtAktualisieren(schichtId, sitzung.organisationId, patch)
+  return mitProtokoll(schichtAktualisieren(schichtId, sitzung.organisationId, patch), 'dienstplan', 'Schicht geändert', null, schichtId)
 }
 
 export async function schichtLoeschenAktion(schichtId: string): Promise<{ fehler?: string }> {
   const sitzung = await leitungOderFehler()
-  return schichtLoeschen(schichtId, sitzung.organisationId)
+  return mitProtokoll(schichtLoeschen(schichtId, sitzung.organisationId), 'dienstplan', 'Schicht gelöscht', null, schichtId)
 }
 
 export async function verfuegbarkeitenLadenAktion(mitarbeiterId: string, von: string, bis: string): Promise<Verfuegbarkeit[]> {
@@ -141,7 +142,7 @@ export async function verfuegbarkeitSetzenAktion(input: {
   notiz?: string
 }): Promise<{ fehler?: string; verfuegbarkeit?: Verfuegbarkeit }> {
   const sitzung = await mitarbeiterSitzungOderFehler()
-  return verfuegbarkeitSetzen(sitzung.organisationId, sitzung.mitarbeiterId, input)
+  return mitProtokoll(verfuegbarkeitSetzen(sitzung.organisationId, sitzung.mitarbeiterId, input), 'dienstplan', 'Verfügbarkeit eingetragen', `${input.datum}: ${input.verfuegbar ? 'verfügbar' : 'nicht verfügbar'}`, null)
 }
 
 export type TauschAnfrageMitSchicht = TauschAnfrage & { schicht: Schicht }
@@ -168,7 +169,7 @@ export async function tauschAnfrageErstellenAktion(schichtId: string): Promise<{
   if (schicht.mitarbeiterId !== sitzung.mitarbeiterId) return { fehler: 'Das ist nicht deine Schicht' }
   if (schicht.datum < heuteBerlin()) return { fehler: 'Diese Schicht liegt in der Vergangenheit' }
 
-  return tauschAnfrageErstellen(sitzung.organisationId, schichtId, sitzung.mitarbeiterId)
+  return mitProtokoll(tauschAnfrageErstellen(sitzung.organisationId, schichtId, sitzung.mitarbeiterId), 'dienstplan', 'Schicht zum Tausch angeboten', null, schichtId)
 }
 
 export async function tauschAnfrageStornierenAktion(anfrageId: string): Promise<{ fehler?: string }> {
@@ -180,7 +181,7 @@ export async function tauschAnfrageStornierenAktion(anfrageId: string): Promise<
     return { fehler: 'Keine Berechtigung' }
   }
 
-  return tauschAnfrageStatusSetzen(anfrageId, sitzung.organisationId, 'storniert', ['offen', 'angenommen'])
+  return mitProtokoll(tauschAnfrageStatusSetzen(anfrageId, sitzung.organisationId, 'storniert', ['offen', 'angenommen']), 'dienstplan', 'Tausch-Anfrage zurückgezogen', null, anfrageId)
 }
 
 // Zusage eines anderen Mitarbeiters – schreibt die Schicht bewusst noch
@@ -203,7 +204,7 @@ export async function tauschAnfrageAnnehmenAktion(anfrageId: string): Promise<{ 
   const konflikt = await pruefeKonfliktfrei(sitzung.organisationId, { ...schicht, mitarbeiterId: sitzung.mitarbeiterId })
   if (konflikt) return { fehler: konflikt }
 
-  return tauschAnfrageZusagen(anfrageId, sitzung.organisationId, sitzung.mitarbeiterId)
+  return mitProtokoll(tauschAnfrageZusagen(anfrageId, sitzung.organisationId, sitzung.mitarbeiterId), 'dienstplan', 'Tausch zugesagt', null, anfrageId)
 }
 
 // Erst hier wird die Schicht tatsächlich umgeschrieben – ausschließlich
@@ -228,10 +229,10 @@ export async function tauschAnfrageBestaetigenAktion(anfrageId: string): Promise
   const zuweisung = await schichtAktualisieren(schicht.id, sitzung.organisationId, { mitarbeiterId: anfrage.zielMitarbeiterId })
   if (zuweisung.fehler) return zuweisung
 
-  return tauschAnfrageStatusSetzen(anfrageId, sitzung.organisationId, 'bestaetigt', ['angenommen'], anfrage.zielMitarbeiterId)
+  return mitProtokoll(tauschAnfrageStatusSetzen(anfrageId, sitzung.organisationId, 'bestaetigt', ['angenommen'], anfrage.zielMitarbeiterId), 'dienstplan', 'Tausch bestätigt', null, anfrageId)
 }
 
 export async function tauschAnfrageAblehnenAktion(anfrageId: string): Promise<{ fehler?: string }> {
   const sitzung = await leitungOderFehler()
-  return tauschAnfrageStatusSetzen(anfrageId, sitzung.organisationId, 'abgelehnt', ['offen', 'angenommen'])
+  return mitProtokoll(tauschAnfrageStatusSetzen(anfrageId, sitzung.organisationId, 'abgelehnt', ['offen', 'angenommen']), 'dienstplan', 'Tausch abgelehnt', null, anfrageId)
 }

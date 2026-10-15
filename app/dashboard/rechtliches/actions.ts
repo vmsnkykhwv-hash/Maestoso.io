@@ -3,6 +3,7 @@
 import { verwaltungFuer } from '@/lib/zugriff'
 import { rechtlicheAngabenSpeichern } from '@/lib/rechtliches/daten'
 import type { RechtlicheAngaben } from '@/lib/rechtliches/types'
+import { mitProtokoll } from '@/lib/protokoll'
 
 export async function rechtlicheAngabenSpeichernAktion(angaben: RechtlicheAngaben): Promise<{ fehler?: string }> {
   const sitzung = await verwaltungFuer(null).catch(() => null)
@@ -14,5 +15,5 @@ export async function rechtlicheAngabenSpeichernAktion(angaben: RechtlicheAngabe
     return { fehler: 'Bitte eine gültige E-Mail-Adresse angeben.' }
   }
 
-  return rechtlicheAngabenSpeichern(sitzung.organisationId, angaben)
+  return mitProtokoll(rechtlicheAngabenSpeichern(sitzung.organisationId, angaben), 'rechtliches', 'Angaben geändert', null, null)
 }

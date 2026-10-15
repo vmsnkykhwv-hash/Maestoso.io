@@ -37,6 +37,7 @@ Die vollständige Datei-Karte steht in `README.md` → "Aufbau". Kurzfassung:
 | PIN-Hashing | `lib/pinHash.ts` (nur Node, nie Edge – siehe unten) |
 | Routenschutz | `proxy.ts` |
 | Rate-Limiting | `lib/rateLimit.ts` |
+| Änderungsprotokoll (jede ändernde Action ruft `protokollieren`) | `lib/protokoll.ts` |
 | Jedes Modul | `app/dashboard/<modul>/` (UI) + `lib/<modul>/` (Logik, DB-Zugriff) |
 | DB-Schema | `supabase/migrations/` (nummeriert, nacheinander anwenden) |
 | Preismodell | `README.md` → "Preismodell" |

@@ -11,6 +11,7 @@ import {
 } from '@/lib/veranstaltung/daten'
 import { veranstaltungAbsagen, veranstaltungBestaetigen, veranstaltungLoeschenMitBlockierung } from '@/lib/veranstaltung/aktionen'
 import type { Veranstaltung, VeranstaltungEinstellungen } from '@/lib/veranstaltung/types'
+import { mitProtokoll } from '@/lib/protokoll'
 
 // Tagesgeschäft: Verwaltungskonto oder Tresen-Gerät mit freigeschalteter
 // Mitarbeiterin, nicht vom Handy aus.
@@ -35,7 +36,7 @@ export async function einstellungenLadenAktion(): Promise<VeranstaltungEinstellu
 
 export async function einstellungenSpeichernAktion(einstellungen: VeranstaltungEinstellungen): Promise<{ fehler?: string }> {
   const organisationId = await verwaltungsIdOderFehler()
-  return veranstaltungEinstellungenSpeichern(organisationId, einstellungen)
+  return mitProtokoll(veranstaltungEinstellungenSpeichern(organisationId, einstellungen), 'veranstaltung', 'Einstellungen geändert', null, null)
 }
 
 // Manuelle Anlage durchs Personal (z. B. telefonische Anfrage) – landet wie
@@ -57,27 +58,27 @@ export async function veranstaltungAnlegenAktion(input: {
   if (!input.ansprechpartnerName.trim()) return { fehler: 'Bitte einen Ansprechpartner angeben.' }
   if (input.ende <= input.beginn) return { fehler: 'Ende muss nach dem Beginn liegen.' }
   if (input.geschaetzteGaeste < 1) return { fehler: 'Bitte eine gültige Gästezahl angeben.' }
-  return veranstaltungAnlegen(organisationId, input)
+  return mitProtokoll(veranstaltungAnlegen(organisationId, input), 'veranstaltung', 'Veranstaltung angelegt', `${input.titel}, ${input.datum}`, null)
 }
 
 export async function veranstaltungBestaetigenAktion(id: string): Promise<{ fehler?: string }> {
   const organisationId = await organisationIdOderFehler()
-  return veranstaltungBestaetigen(organisationId, id)
+  return mitProtokoll(veranstaltungBestaetigen(organisationId, id), 'veranstaltung', 'Veranstaltung bestätigt', null, id)
 }
 
 export async function veranstaltungAbsagenAktion(id: string): Promise<{ fehler?: string }> {
   const organisationId = await organisationIdOderFehler()
-  return veranstaltungAbsagen(organisationId, id)
+  return mitProtokoll(veranstaltungAbsagen(organisationId, id), 'veranstaltung', 'Veranstaltung abgesagt', null, id)
 }
 
 export async function veranstaltungAlsDurchgefuehrtAktion(id: string): Promise<{ fehler?: string }> {
   const organisationId = await organisationIdOderFehler()
-  return veranstaltungStatusAendern(id, organisationId, 'durchgefuehrt')
+  return mitProtokoll(veranstaltungStatusAendern(id, organisationId, 'durchgefuehrt'), 'veranstaltung', 'Veranstaltung durchgeführt', null, id)
 }
 
 export async function veranstaltungLoeschenAktion(id: string): Promise<{ fehler?: string }> {
   const organisationId = await organisationIdOderFehler()
-  return veranstaltungLoeschenMitBlockierung(organisationId, id)
+  return mitProtokoll(veranstaltungLoeschenMitBlockierung(organisationId, id), 'veranstaltung', 'Veranstaltung gelöscht', null, id)
 }
 
 export async function veranstaltungPreiseSpeichernAktion(
@@ -85,5 +86,5 @@ export async function veranstaltungPreiseSpeichernAktion(
   input: { preis: number | null; anzahlung: number | null }
 ): Promise<{ fehler?: string }> {
   const organisationId = await verwaltungsIdOderFehler()
-  return veranstaltungPreiseSpeichern(id, organisationId, input)
+  return mitProtokoll(veranstaltungPreiseSpeichern(id, organisationId, input), 'veranstaltung', 'Preise geändert', `Pauschale ${input.preis ?? '–'} €, Anzahlung ${input.anzahlung ?? '–'} €`, id)
 }

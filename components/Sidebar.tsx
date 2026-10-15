@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { KeyRound, LogOut, Scale, UserRoundX } from 'lucide-react'
+import { History, KeyRound, LogOut, Scale, UserRoundX } from 'lucide-react'
 import { logout } from '@/app/actions'
 import { geraetEntkoppelnAktion } from '@/app/dashboard/zugaenge/actions'
 import { mitarbeiterAbmelden } from '@/lib/mitarbeiter/aktionen'
@@ -67,6 +67,7 @@ export default function Sidebar({ organisationName, nutzer }: { organisationName
         {nutzer.art === 'inhaber' && (
           <>
             {fusslink('/dashboard/zugaenge', KeyRound, 'Zugänge & Geräte')}
+            {fusslink('/dashboard/protokoll', History, 'Änderungsprotokoll')}
             {fusslink('/dashboard/rechtliches', Scale, 'Impressum & Datenschutz')}
             <form action={logout}>
               <button type="submit" className={`${FUSSLINK} text-sidebar-foreground/70`}>

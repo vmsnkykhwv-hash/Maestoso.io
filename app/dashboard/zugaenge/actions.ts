@@ -23,6 +23,7 @@ import { einladungVerschicken } from '@/lib/konten/einladungVersand'
 import { ladeKonto, sitzungenBeenden } from '@/lib/konten/daten'
 import { getBetriebsSitzung } from '@/lib/session'
 import { getServiceClient } from '@/lib/supabase/server'
+import { protokollieren } from '@/lib/protokoll'
 
 async function inhaberOderFehler() {
   const sitzung = await getBetriebsSitzung()
@@ -38,6 +39,7 @@ export async function kontoEinladenAktion(
   const angelegt = await benutzerAnlegen(sitzung.organisationId, email, name)
   if (!angelegt.benutzerId) return { fehler: angelegt.fehler }
   const einladung = await einladungVerschicken(sitzung.organisationId, angelegt.benutzerId, email)
+  await protokollieren('zugaenge', 'Verwaltungskonto eingeladen', email, null)
   return { ...einladung, benutzer: await ladeBenutzerDerOrganisation(sitzung.organisationId) }
 }
 
@@ -60,6 +62,7 @@ export async function kontoAktivSetzenAktion(benutzerId: string, aktiv: boolean)
   const { error } = await getServiceClient().from('benutzer').update({ aktiv }).eq('id', benutzerId).eq('organisation_id', sitzung.organisationId)
   if (error) return { fehler: error.message }
   if (!aktiv) await sitzungenBeenden(konto)
+  await protokollieren('zugaenge', 'Verwaltungskonto gesperrt/entsperrt', aktiv ? 'entsperrt' : 'gesperrt', benutzerId)
   return { benutzer: await ladeBenutzerDerOrganisation(sitzung.organisationId) }
 }
 
@@ -82,6 +85,7 @@ export async function tresenFreigebenAktion(name: string): Promise<{ fehler?: st
   const sitzung = await inhaberOderFehler()
   const geraet = await geraetAnlegen({ organisationId: sitzung.organisationId, art: 'tresen', name, erstelltVon: sitzung.kontoId })
   await geraeteCookieSetzen({ geraetId: geraet.id, organisationId: sitzung.organisationId, art: 'tresen' })
+  await protokollieren('zugaenge', 'Tresen-Gerät freigegeben', name, geraet.id)
   return { geraete: await ladeGeraeteDerOrganisation(sitzung.organisationId) }
 }
 
@@ -89,6 +93,7 @@ export async function tresenFreigebenAktion(name: string): Promise<{ fehler?: st
 export async function geraetEntziehenAktion(geraetId: string): Promise<{ fehler?: string; geraete?: Geraet[] }> {
   const sitzung = await inhaberOderFehler()
   if (!(await geraetWiderrufen(sitzung.organisationId, geraetId))) return { fehler: 'Gerät nicht gefunden.' }
+  await protokollieren('zugaenge', 'Gerät entzogen', null, geraetId)
   return { geraete: await ladeGeraeteDerOrganisation(sitzung.organisationId) }
 }
 
@@ -99,6 +104,7 @@ export async function handyKoppelnAktion(mitarbeiterId: string): Promise<{ fehle
   const code = await kopplungscodeErstellen(sitzung.organisationId, mitarbeiterId)
   const link = await teamUrl(sitzung.organisationId, `/koppeln?code=${encodeURIComponent(code)}`)
   const qrSvg = await QRCode.toString(link, { type: 'svg', margin: 1, width: 200 })
+  await protokollieren('zugaenge', 'Handy-Kopplung gestartet', mitarbeiter.name, mitarbeiterId)
   return { link, qrSvg }
 }
 
@@ -158,5 +164,6 @@ export async function mitarbeiterModuleSetzenAktion(mitarbeiterId: string, modul
     .select('id')
   if (error) return { fehler: error.message }
   if (!data?.length) return { fehler: 'Mitarbeiter*in nicht gefunden.' }
+  await protokollieren('zugaenge', 'Tools geändert', erlaubt.join(', ') || 'keine', mitarbeiterId)
   return {}
 }

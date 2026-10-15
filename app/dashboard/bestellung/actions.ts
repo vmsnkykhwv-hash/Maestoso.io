@@ -18,6 +18,8 @@ import { organisationsName } from '@/lib/tischplan/daten'
 import { bewertungsanfragePlanenFuerBestellung, bewertungsanfrageStornierenFuerBestellung } from '@/lib/bewertung/aktionen'
 import { berechneBestellAnalyse, type BestellungAuswertung } from '@/lib/bestellung/auswertung'
 import type { Bestellung, BestellEinstellungen, BestellKanal, BestellStatus } from '@/lib/bestellung/types'
+import { mitProtokoll, protokollieren } from '@/lib/protokoll'
+import { BESTELL_STATUS_LABEL } from '@/lib/bestellung/types'
 
 // Tagesgeschäft: Verwaltungskonto oder Tresen-Gerät mit freigeschalteter
 // Mitarbeiterin, nicht vom Handy aus.
@@ -39,17 +41,17 @@ export async function einstellungenSpeichernAktion(
   einstellungen: Omit<BestellEinstellungen, 'abholungPausiertBis' | 'lieferungPausiertBis' | 'abholungPauseGrund' | 'lieferungPauseGrund'>
 ): Promise<{ fehler?: string }> {
   const organisationId = await verwaltungsIdOderFehler()
-  return bestellEinstellungenSpeichern(organisationId, einstellungen)
+  return mitProtokoll(bestellEinstellungenSpeichern(organisationId, einstellungen), 'bestellung', 'Einstellungen geändert', null, null)
 }
 
 export async function kanalPausierenAktion(kanal: BestellKanal, minuten: number, grund?: string): Promise<{ fehler?: string }> {
   const organisationId = await organisationIdOderFehler()
-  return kanalPausieren(organisationId, kanal, minuten, grund)
+  return mitProtokoll(kanalPausieren(organisationId, kanal, minuten, grund), 'bestellung', 'Kanal pausiert', `${kanal === 'abholung' ? 'Abholung' : 'Lieferung'}, ${minuten} Min.`, null)
 }
 
 export async function kanalPauseAufhebenAktion(kanal: BestellKanal): Promise<{ fehler?: string }> {
   const organisationId = await organisationIdOderFehler()
-  return kanalPauseAufheben(organisationId, kanal)
+  return mitProtokoll(kanalPauseAufheben(organisationId, kanal), 'bestellung', 'Pause aufgehoben', kanal === 'abholung' ? 'Abholung' : 'Lieferung', null)
 }
 
 export async function bestellungenFuerTagLadenAktion(datum: string): Promise<Bestellung[]> {
@@ -97,6 +99,7 @@ export async function bestellungStatusAendernAktion(id: string, status: BestellS
   if (status === 'abgeschlossen') await bewertungsanfragePlanenFuerBestellung(organisationId, id)
   else await bewertungsanfrageStornierenFuerBestellung(id)
 
+  await protokollieren('bestellung', 'Bestellung: Status geändert', BESTELL_STATUS_LABEL[status], id)
   return {}
 }
 

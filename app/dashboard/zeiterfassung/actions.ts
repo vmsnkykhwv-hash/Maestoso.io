@@ -9,6 +9,7 @@ import type { Mitarbeiter, MitarbeiterRolle, MitarbeiterTyp } from '@/lib/mitarb
 import { ladeZeiteintraege } from '@/lib/zeiterfassung/daten'
 import { dokumentHochladen, dokumentLoeschen, ladeDokumenteFuerMitarbeiter } from '@/lib/zeiterfassung/dokumente'
 import type { EintragArt, MitarbeiterDokument, Zeiteintrag } from '@/lib/zeiterfassung/types'
+import { mitProtokoll, protokollieren } from '@/lib/protokoll'
 
 // Eigene Zeiten: ansehen auch vom gekoppelten Handy, erfassen/ändern nur am
 // Tresen-Gerät (damit niemand von zu Hause aus stempelt). Das
@@ -91,6 +92,7 @@ export async function zeiteintragSpeichern(eintrag: {
     return { fehler: istGrenzFehler(error?.message) ?? error?.message ?? 'Speichern fehlgeschlagen' }
   }
 
+  await protokollieren('zeiterfassung', 'Arbeitszeit gespeichert', `${(await ladeMitarbeiter(eintrag.mitarbeiterId, organisationId))?.name ?? ''}: ${eintrag.arbeitstag} ${eintrag.beginn ?? ''}–${eintrag.ende ?? ''}`, eintrag.mitarbeiterId)
   return {
     eintrag: {
       id: data.id as string,
@@ -119,6 +121,7 @@ export async function zeiteintragLoeschen(id: string, mitarbeiterId: string): Pr
     .select('id')
   if (error) return { fehler: error.message }
   if (!data || data.length === 0) return { fehler: 'Zeiteintrag nicht gefunden' }
+  await protokollieren('zeiterfassung', 'Arbeitszeit gelöscht', (await ladeMitarbeiter(mitarbeiterId, organisationId))?.name ?? null, mitarbeiterId)
   return {}
 }
 
@@ -159,6 +162,7 @@ export async function mitarbeiterAnlegen(input: {
     return { fehler: istDuplikat ? 'Dieser PIN ist in eurer Organisation schon vergeben' : (error?.message ?? 'Anlegen fehlgeschlagen') }
   }
 
+  await protokollieren('zeiterfassung', 'Mitarbeiter*in angelegt', input.name, null)
   return { mitarbeiter: mitarbeiterAusZeile(data) }
 }
 
@@ -185,6 +189,7 @@ export async function mitarbeiterAktualisieren(
     .select('id')
   if (error) return { fehler: error.message }
   if (!data || data.length === 0) return { fehler: 'Mitarbeiter nicht gefunden' }
+  await protokollieren('zeiterfassung', 'Mitarbeiter*in geändert', Object.keys(patch).join(', '), mitarbeiterId)
   return {}
 }
 
@@ -201,13 +206,13 @@ export async function dokumentHochladenAktion(
   if (!sitzung) return { fehler: 'Keine Berechtigung' }
   const mitarbeiter = await ladeMitarbeiter(mitarbeiterId, sitzung.organisationId)
   if (!mitarbeiter) return { fehler: 'Mitarbeiter nicht gefunden' }
-  return dokumentHochladen(sitzung.organisationId, mitarbeiterId, datei)
+  return mitProtokoll(dokumentHochladen(sitzung.organisationId, mitarbeiterId, datei), 'zeiterfassung', 'Dokument hochgeladen', `${mitarbeiter.name}: ${datei.name}`, mitarbeiterId)
 }
 
 export async function dokumentLoeschenAktion(id: string): Promise<{ fehler?: string }> {
   const sitzung = await verwaltungFuer('zeiterfassung').catch(() => null)
   if (!sitzung) return { fehler: 'Keine Berechtigung' }
-  return dokumentLoeschen(id, sitzung.organisationId)
+  return mitProtokoll(dokumentLoeschen(id, sitzung.organisationId), 'zeiterfassung', 'Dokument gelöscht', null, id)
 }
 
 export async function mitarbeiterPinZuruecksetzen(mitarbeiterId: string, neuerPin: string): Promise<{ fehler?: string }> {
@@ -233,5 +238,6 @@ export async function mitarbeiterPinZuruecksetzen(mitarbeiterId: string, neuerPi
     return { fehler: istDuplikat ? 'Dieser PIN ist in eurer Organisation schon vergeben' : error.message }
   }
   if (!data || data.length === 0) return { fehler: 'Mitarbeiter nicht gefunden' }
+  await protokollieren('zeiterfassung', 'PIN zurückgesetzt', null, mitarbeiterId)
   return {}
 }

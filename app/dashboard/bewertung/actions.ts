@@ -11,6 +11,7 @@ import {
 } from '@/lib/bewertung/daten'
 import { berechneKlickrate, berechneGoogleTrend, type KlickrateAuswertung, type GoogleTrendAuswertung, type GoogleSnapshot } from '@/lib/bewertung/auswertung'
 import type { BewertungsEinstellungen, BewertungsListenEintrag } from '@/lib/bewertung/types'
+import { mitProtokoll } from '@/lib/protokoll'
 
 // Das ganze Modul ist Verwaltung (Inhalte bzw. Einstellungen des Betriebs),
 // am Tresen und auf Mitarbeiter-Handys nicht erreichbar.
@@ -33,7 +34,7 @@ export async function einstellungenSpeichernAktion(einstellungen: BewertungsEins
   if (einstellungen.aktiv && !einstellungen.googleUrl?.trim()) {
     return { fehler: 'Ohne Google-Bewertungslink kann die Anfrage nicht aktiviert werden.' }
   }
-  return bewertungsEinstellungenSpeichern(organisationId, einstellungen)
+  return mitProtokoll(bewertungsEinstellungenSpeichern(organisationId, einstellungen), 'bewertung', 'Einstellungen geändert', null, null)
 }
 
 export async function klickrateLadenAktion(von: string, bis: string): Promise<KlickrateAuswertung> {
@@ -52,5 +53,5 @@ export async function googleSnapshotSpeichernAktion(snapshot: GoogleSnapshot): P
   const organisationId = await organisationIdOderFehler()
   if (snapshot.anzahlBewertungen < 0) return { fehler: 'Anzahl kann nicht negativ sein.' }
   if (snapshot.durchschnitt < 1 || snapshot.durchschnitt > 5) return { fehler: 'Durchschnitt muss zwischen 1 und 5 liegen.' }
-  return googleSnapshotSpeichern(organisationId, snapshot)
+  return mitProtokoll(googleSnapshotSpeichern(organisationId, snapshot), 'bewertung', 'Google-Stand eingetragen', null, null)
 }

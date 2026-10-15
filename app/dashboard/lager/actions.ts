@@ -34,6 +34,7 @@ import {
 import { bestellMailSenden } from '@/lib/lager/email'
 import { pruefungFaelligkeit } from '@/lib/lager/regeln'
 import type { Artikel, Bestandspruefung, BestandspruefungEintrag, Lieferant, OffenerBestellEintrag } from '@/lib/lager/types'
+import { mitProtokoll, protokollieren } from '@/lib/protokoll'
 
 // Lieferanten, Artikel, Zuweisen, Bestellen: nur Verwaltungskonto.
 async function leitungOderFehler() {
@@ -88,7 +89,7 @@ export async function pruefungZuweisenAktion(pruefungId: string, mitarbeiterId: 
   const sitzung = await leitungOderFehler()
   // Die ID kommt vom Client – nur Mitarbeitende des eigenen Betriebs.
   if (mitarbeiterId && !(await ladeMitarbeiter(mitarbeiterId, sitzung.organisationId))) return { fehler: 'Mitarbeiter nicht gefunden' }
-  return pruefungMitarbeiterZuweisen(pruefungId, sitzung.organisationId, mitarbeiterId)
+  return mitProtokoll(pruefungMitarbeiterZuweisen(pruefungId, sitzung.organisationId, mitarbeiterId), 'lager', 'Prüfung zugewiesen', null, pruefungId)
 }
 
 export async function pruefungDetailsLadenAktion(
@@ -128,7 +129,7 @@ export async function pruefungAbschliessenAktion(pruefungId: string): Promise<{ 
   const pruefung = await ladePruefung(pruefungId, sitzung.organisationId)
   if (!pruefung) return { fehler: 'Prüfung nicht gefunden' }
   if (!darfPruefung(sitzung, pruefung)) return { fehler: 'Keine Berechtigung' }
-  return pruefungAlsErledigtMarkieren(pruefungId, sitzung.organisationId)
+  return mitProtokoll(pruefungAlsErledigtMarkieren(pruefungId, sitzung.organisationId), 'lager', 'Prüfung abgeschlossen', null, pruefungId)
 }
 
 export async function lieferantenLadenAktion(): Promise<Lieferant[]> {
@@ -149,7 +150,7 @@ export async function lieferantErstellenAktion(input: {
   vorlaufTage: number
 }): Promise<{ fehler?: string; lieferant?: Lieferant }> {
   const sitzung = await leitungOderFehler()
-  return lieferantErstellen(sitzung.organisationId, input)
+  return mitProtokoll(lieferantErstellen(sitzung.organisationId, input), 'lager', 'Lieferant angelegt', input.name, null)
 }
 
 export async function lieferantAktualisierenAktion(
@@ -169,12 +170,12 @@ export async function lieferantAktualisierenAktion(
   }>
 ): Promise<{ fehler?: string }> {
   const sitzung = await leitungOderFehler()
-  return lieferantAktualisieren(id, sitzung.organisationId, patch)
+  return mitProtokoll(lieferantAktualisieren(id, sitzung.organisationId, patch), 'lager', 'Lieferant geändert', null, id)
 }
 
 export async function lieferantLoeschenAktion(id: string): Promise<{ fehler?: string }> {
   const sitzung = await leitungOderFehler()
-  return lieferantLoeschen(id, sitzung.organisationId)
+  return mitProtokoll(lieferantLoeschen(id, sitzung.organisationId), 'lager', 'Lieferant gelöscht', null, id)
 }
 
 export async function artikelAlleLadenAktion(): Promise<Artikel[]> {
@@ -192,7 +193,7 @@ export async function artikelErstellenAktion(input: {
   const sitzung = await leitungOderFehler()
   const lieferant = await ladeLieferant(input.lieferantId, sitzung.organisationId)
   if (!lieferant) return { fehler: 'Lieferant nicht gefunden' }
-  return artikelErstellen(sitzung.organisationId, input)
+  return mitProtokoll(artikelErstellen(sitzung.organisationId, input), 'lager', 'Artikel angelegt', input.name, null)
 }
 
 export async function artikelAktualisierenAktion(
@@ -200,12 +201,12 @@ export async function artikelAktualisierenAktion(
   patch: Partial<{ name: string; einheit: string; mindestbestand: number; notiz: string | null; aktiv: boolean }>
 ): Promise<{ fehler?: string }> {
   const sitzung = await leitungOderFehler()
-  return artikelAktualisieren(id, sitzung.organisationId, patch)
+  return mitProtokoll(artikelAktualisieren(id, sitzung.organisationId, patch), 'lager', 'Artikel geändert', null, id)
 }
 
 export async function artikelLoeschenAktion(id: string): Promise<{ fehler?: string }> {
   const sitzung = await leitungOderFehler()
-  return artikelLoeschen(id, sitzung.organisationId)
+  return mitProtokoll(artikelLoeschen(id, sitzung.organisationId), 'lager', 'Artikel gelöscht', null, id)
 }
 
 export async function mitarbeiterNamenLadenAktion(): Promise<{ id: string; name: string }[]> {
@@ -271,5 +272,6 @@ export async function bestellungSendenAktion(lieferantId: string, eintragIds: st
   })
   if (ergebnis.fehler) return ergebnis
 
+  await protokollieren('lager', 'Bestellung an Lieferant gesendet', `${eintragIds.length} Position(en)`, lieferantId)
   return {}
 }

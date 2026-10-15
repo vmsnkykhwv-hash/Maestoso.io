@@ -1,0 +1,85 @@
+import { ladeKonto } from '@/lib/konten/daten'
+import { getBetriebsSitzung } from '@/lib/session'
+import { getServiceClient } from '@/lib/supabase/server'
+
+import type { ProtokollEintrag, ProtokollModul } from '@/lib/protokollTypen'
+
+export { PROTOKOLL_MODUL_LABEL, type ProtokollEintrag, type ProtokollModul } from '@/lib/protokollTypen'
+
+// Schreibt einen Eintrag für die aktuell angemeldete Person. Ein Fehler beim
+// Protokollieren darf die eigentliche Aktion nie scheitern lassen (die ist
+// zu diesem Zeitpunkt schon gespeichert) – er wird nur geloggt.
+export async function protokollieren(modul: ProtokollModul, aktion: string, details?: string | null, objektId?: string | null) {
+  try {
+    const sitzung = await getBetriebsSitzung()
+    if (!sitzung) return
+    let akteur: { art: ProtokollEintrag['akteurArt']; id: string | null; name: string }
+    if (sitzung.art === 'inhaber') {
+      const konto = await ladeKonto('benutzer', sitzung.kontoId)
+      akteur = { art: 'inhaber', id: sitzung.kontoId, name: konto?.name || konto?.email || 'Verwaltungskonto' }
+    } else if (sitzung.art === 'tresen') {
+      akteur = {
+        art: 'tresen',
+        id: sitzung.mitarbeiter?.id ?? null,
+        name: `${sitzung.mitarbeiter?.name ?? 'Unbekannt'} (${sitzung.geraetName})`,
+      }
+    } else {
+      akteur = { art: 'handy', id: sitzung.mitarbeiter.id, name: `${sitzung.mitarbeiter.name} (Handy)` }
+    }
+
+    const { error } = await getServiceClient()
+      .from('aenderungsprotokoll')
+      .insert({
+        organisation_id: sitzung.organisationId,
+        akteur_art: akteur.art,
+        akteur_id: akteur.id,
+        akteur_name: akteur.name,
+        modul,
+        aktion,
+        details: details ?? null,
+        objekt_id: objektId ?? null,
+      })
+    if (error) console.error('Änderungsprotokoll:', error.message)
+  } catch (e) {
+    console.error('Änderungsprotokoll:', e)
+  }
+}
+
+// Für Aktionen, die das Ergebnis der Datenfunktion direkt zurückgeben:
+// protokolliert nur, wenn es keinen Fehler gab.
+export async function mitProtokoll<T extends { fehler?: string }>(
+  ergebnis: Promise<T> | T,
+  modul: ProtokollModul,
+  aktion: string,
+  details?: string | null,
+  objektId?: string | null
+): Promise<T> {
+  const fertig = await ergebnis
+  if (!fertig.fehler) await protokollieren(modul, aktion, details, objektId)
+  return fertig
+}
+
+export async function ladeProtokoll(
+  organisationId: string,
+  filter: { modul?: ProtokollModul; vor?: string } = {},
+  anzahl = 100
+): Promise<ProtokollEintrag[]> {
+  let query = getServiceClient()
+    .from('aenderungsprotokoll')
+    .select('id, zeitpunkt, akteur_art, akteur_name, modul, aktion, details')
+    .eq('organisation_id', organisationId)
+    .order('zeitpunkt', { ascending: false })
+    .limit(anzahl)
+  if (filter.modul) query = query.eq('modul', filter.modul)
+  if (filter.vor) query = query.lt('zeitpunkt', filter.vor)
+  const { data } = await query
+  return (data ?? []).map((z) => ({
+    id: z.id as string,
+    zeitpunkt: z.zeitpunkt as string,
+    akteurArt: z.akteur_art as ProtokollEintrag['akteurArt'],
+    akteurName: z.akteur_name as string,
+    modul: z.modul as ProtokollModul,
+    aktion: z.aktion as string,
+    details: (z.details as string | null) ?? null,
+  }))
+}

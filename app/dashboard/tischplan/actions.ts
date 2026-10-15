@@ -25,6 +25,8 @@ import {
 import { pruefeBuchung } from '@/lib/tischplan/regeln'
 import { berechneAuslastung, type TischplanAuswertung } from '@/lib/tischplan/auswertung'
 import type { Blockierung, Einstellungen, Reservierung, ReservierungAusnahme, ReservierungStatus, Tisch } from '@/lib/tischplan/types'
+import { mitProtokoll, protokollieren } from '@/lib/protokoll'
+import { RESERVIERUNG_STATUS_LABEL } from '@/lib/tischplan/types'
 
 // Tagesgeschäft: Verwaltungskonto oder Tresen-Gerät mit freigeschalteter
 // Mitarbeiterin, nicht vom Handy aus.
@@ -39,22 +41,22 @@ async function verwaltungsIdOderFehler(): Promise<string> {
 
 export async function einstellungenSpeichernAktion(einstellungen: Einstellungen): Promise<{ fehler?: string }> {
   const organisationId = await verwaltungsIdOderFehler()
-  return einstellungenSpeichern(organisationId, einstellungen)
+  return mitProtokoll(einstellungenSpeichern(organisationId, einstellungen), 'tischplan', 'Öffnungszeiten und Regeln geändert', null, null)
 }
 
 export async function tischAnlegenAktion(input: { name: string; kapazitaet: number }): Promise<{ fehler?: string; tisch?: Tisch }> {
   const organisationId = await verwaltungsIdOderFehler()
-  return tischErstellen(organisationId, input)
+  return mitProtokoll(tischErstellen(organisationId, input), 'tischplan', 'Tisch angelegt', input.name, null)
 }
 
 export async function tischAktualisierenAktion(tischId: string, patch: { name?: string; kapazitaet?: number }): Promise<{ fehler?: string }> {
   const organisationId = await verwaltungsIdOderFehler()
-  return tischAktualisieren(tischId, organisationId, patch)
+  return mitProtokoll(tischAktualisieren(tischId, organisationId, patch), 'tischplan', 'Tisch geändert', null, tischId)
 }
 
 export async function tischLoeschenAktion(tischId: string): Promise<{ fehler?: string }> {
   const organisationId = await verwaltungsIdOderFehler()
-  return tischLoeschen(tischId, organisationId)
+  return mitProtokoll(tischLoeschen(tischId, organisationId), 'tischplan', 'Tisch gelöscht', null, tischId)
 }
 
 export async function reservierungenFuerTagLadenAktion(datum: string): Promise<Reservierung[]> {
@@ -81,12 +83,12 @@ export async function blockierungAnlegenAktion(input: {
   notiz?: string
 }): Promise<{ fehler?: string; blockierung?: Blockierung }> {
   const organisationId = await organisationIdOderFehler()
-  return blockierungErstellen(organisationId, input)
+  return mitProtokoll(blockierungErstellen(organisationId, input), 'tischplan', 'Blockierung angelegt', `${input.datum} ${input.startZeit}–${input.endZeit}, ${input.anzahlTische} Tisch(e)`, null)
 }
 
 export async function blockierungLoeschenAktion(id: string): Promise<{ fehler?: string }> {
   const organisationId = await organisationIdOderFehler()
-  return blockierungLoeschen(id, organisationId)
+  return mitProtokoll(blockierungLoeschen(id, organisationId), 'tischplan', 'Blockierung gelöscht', null, id)
 }
 
 export async function ausnahmenLadenAktion(): Promise<ReservierungAusnahme[]> {
@@ -102,12 +104,12 @@ export async function ausnahmeSpeichernAktion(input: {
   notiz?: string
 }): Promise<{ fehler?: string; ausnahme?: ReservierungAusnahme }> {
   const organisationId = await verwaltungsIdOderFehler()
-  return ausnahmeSpeichern(organisationId, input)
+  return mitProtokoll(ausnahmeSpeichern(organisationId, input), 'tischplan', 'Ausnahme gespeichert', `${input.datum}: ${input.geschlossen ? 'geschlossen' : `${input.von}–${input.bis}`}`, null)
 }
 
 export async function ausnahmeLoeschenAktion(id: string): Promise<{ fehler?: string }> {
   const organisationId = await verwaltungsIdOderFehler()
-  return ausnahmeLoeschen(id, organisationId)
+  return mitProtokoll(ausnahmeLoeschen(id, organisationId), 'tischplan', 'Ausnahme gelöscht', null, id)
 }
 
 export async function reservierungStatusAendernAktion(id: string, status: ReservierungStatus): Promise<{ fehler?: string }> {
@@ -121,12 +123,13 @@ export async function reservierungStatusAendernAktion(id: string, status: Reserv
   if (status === 'erschienen') await bewertungsanfragePlanen(organisationId, id)
   else await bewertungsanfrageStornierenFuerReservierung(id)
 
+  await protokollieren('tischplan', 'Reservierung: Status geändert', RESERVIERUNG_STATUS_LABEL[status], id)
   return {}
 }
 
 export async function reservierungTischZuweisenAktion(id: string, tischId: string | null): Promise<{ fehler?: string }> {
   const organisationId = await organisationIdOderFehler()
-  return reservierungTischZuweisen(id, organisationId, tischId)
+  return mitProtokoll(reservierungTischZuweisen(id, organisationId, tischId), 'tischplan', 'Reservierung: Tisch zugewiesen', null, id)
 }
 
 // Manuelle Buchung durchs Personal (z. B. telefonische Reservierung) –
@@ -168,7 +171,7 @@ export async function reservierungManuellAnlegenAktion(input: {
     return { fehler: pruefung.grund }
   }
 
-  return reservierungErstellenMitPruefung(organisationId, {
+  const ergebnis = await reservierungErstellenMitPruefung(organisationId, {
     name: input.name,
     email: input.email,
     anzahlPersonen: input.anzahlPersonen,
@@ -180,4 +183,8 @@ export async function reservierungManuellAnlegenAktion(input: {
     erinnerung: false,
     notiz: input.notiz,
   })
+  if (!ergebnis.fehler) {
+    await protokollieren('tischplan', 'Reservierung von Hand angelegt', `${input.name}, ${input.datum} ${input.uhrzeit}, ${input.anzahlPersonen} Pers.`)
+  }
+  return ergebnis
 }

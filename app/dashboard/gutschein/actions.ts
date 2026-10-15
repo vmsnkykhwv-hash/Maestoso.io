@@ -14,6 +14,7 @@ import { paypalWebhookRegistrieren } from '@/lib/paypal/client'
 import { plattformUrl } from '@/lib/url'
 import type { Gutschein, GutscheinEinstellungen } from '@/lib/gutschein/types'
 import type { PaypalModus } from '@/lib/paypal/types'
+import { mitProtokoll, protokollieren } from '@/lib/protokoll'
 
 const PAYPAL_WEBHOOK_EVENTS = ['CHECKOUT.ORDER.APPROVED']
 
@@ -38,7 +39,7 @@ export async function gutscheineLadenAktion(): Promise<Gutschein[]> {
 export async function gutscheinEinstellungenSpeichernAktion(einstellungen: GutscheinEinstellungen): Promise<{ fehler?: string }> {
   const orgId = await verwaltungsOrganisationId()
   if (!orgId) return { fehler: 'Nicht angemeldet.' }
-  return gutscheinEinstellungenSpeichern(orgId, einstellungen)
+  return mitProtokoll(gutscheinEinstellungenSpeichern(orgId, einstellungen), 'gutschein', 'Einstellungen geändert', null, null)
 }
 
 // Das Secret wird nie ans Dashboard zurückgegeben – nur ob eines
@@ -108,13 +109,14 @@ export async function paypalEinstellungenSpeichernAktion(input: {
   })
   if (speichernErgebnis.fehler) return speichernErgebnis
 
+  await protokollieren('gutschein', 'PayPal-Zugangsdaten geändert', null, null)
   return warnung ? { warnung } : {}
 }
 
 export async function gutscheinAlsBezahltMarkierenAktion(id: string): Promise<{ fehler?: string }> {
   const orgId = await organisationId()
   if (!orgId) return { fehler: 'Nicht angemeldet.' }
-  return gutscheinAlsBezahltMarkieren(id, orgId)
+  return mitProtokoll(gutscheinAlsBezahltMarkieren(id, orgId), 'gutschein', 'Gutschein als bezahlt markiert', null, id)
 }
 
 export async function gutscheinEinloesenPerCodeAktion(code: string): Promise<{ fehler?: string }> {
@@ -127,11 +129,11 @@ export async function gutscheinEinloesenPerCodeAktion(code: string): Promise<{ f
   if (gutschein.status === 'storniert') return { fehler: 'Dieser Gutschein wurde storniert.' }
   if (gutschein.status === 'offen') return { fehler: 'Dieser Gutschein wurde noch nicht bezahlt.' }
 
-  return gutscheinEinloesen(gutschein.id, orgId)
+  return mitProtokoll(gutscheinEinloesen(gutschein.id, orgId), 'gutschein', 'Gutschein eingelöst', `Code ${gutschein.code}`, gutschein.id)
 }
 
 export async function gutscheinStornierenAktion(id: string): Promise<{ fehler?: string }> {
   const orgId = await organisationId()
   if (!orgId) return { fehler: 'Nicht angemeldet.' }
-  return gutscheinStornieren(id, orgId)
+  return mitProtokoll(gutscheinStornieren(id, orgId), 'gutschein', 'Gutschein storniert', null, id)
 }

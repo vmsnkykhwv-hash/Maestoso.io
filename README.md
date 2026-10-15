@@ -60,6 +60,13 @@ keine aktive Marke in Software-relevanten Klassen) und die Domain
   mit `ZWEI_FAKTOR_SCHLUESSEL`, Wiederherstellungscodes, Einladungen),
   Anmeldeablauf in `lib/konten/anmeldung.ts`, Oberfläche in
   `components/anmeldung/`, Migration `0024`.
+- **Änderungsprotokoll** (nur Verwaltungskonto, Dashboard → „Änderungs-
+  protokoll“): jede ändernde Server Action schreibt mit, wer (Konto, bzw.
+  „Name (Gerät)“ am Tresen, „Name (Handy)“), wann, in welchem Modul was
+  geändert hat. `lib/protokoll.ts` (`protokollieren`, `mitProtokoll`),
+  Tabelle `aenderungsprotokoll`, Migration `0026`. Ein Fehler beim
+  Mitschreiben bricht die eigentliche Aktion bewusst nicht ab. Neue
+  Aktionen müssen den Aufruf selbst mitbringen.
 
 Ein nicht freigeschaltetes Modul ist nicht gesperrt im Sinne von
 unsichtbar – die Organisation sieht und nutzt das echte Modul, nur mit
@@ -653,7 +660,11 @@ dieselbe Schicht, `0019` zwei Postgres-Funktionen
 (`reservierung_mit_pruefung_erstellen`,
 `bestellung_mit_pruefung_erstellen`), die die Kapazitätsprüfung ein zweites
 Mal unter einem Advisory-Lock direkt vor dem Insert laufen lassen (siehe
-"Sicherheits-Audit").
+"Sicherheits-Audit"). `0020` Bewertungs-Auswertung, `0021`
+Veranstaltungen, `0022` rechtliche Angaben, `0023` `custom_domain_aktiv`,
+`0024` Konten (Passwort + 2FA), `0025` Geräte, Kopplungscodes und
+Tool-Freischaltung je Mitarbeiter*in, `0026` das
+Änderungsprotokoll (siehe "Zugänge & Rollen").
 
 ### 2. Umgebungsvariablen
 
