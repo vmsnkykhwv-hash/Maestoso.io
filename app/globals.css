@@ -1,6 +1,6 @@
 @import "tailwindcss";
 
-/* Partitura – "Konzertsaal": dunkles Tintenblau + Gold auf warmem Creme-Papier.
+/* Maestoso – "Konzertsaal": dunkles Tintenblau + Gold auf warmem Creme-Papier.
    Siehe Markenkonzept-Artefakt für die Herleitung; hier die Tokens fürs echte Projekt. */
 :root {
   --background: #faf7f0;

@@ -6,8 +6,8 @@ export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
 
   // Domain-basiertes Routing fürs Website-Modul: Besucher einer
-  // Organisations-Subdomain (z. B. cafedoa.<plattform-domain>) oder einer
-  // eigenen, nachträglich eingetragenen Domain (z. B. cafedoa.de) sehen
+  // Organisations-Subdomain (z. B. musterbetrieb.<plattform-domain>) oder einer
+  // eigenen, nachträglich eingetragenen Domain (z. B. musterbetrieb.de) sehen
   // dort ausschließlich die öffentliche Website dieser Organisation – nie
   // Login/Dashboard. Ohne gesetzte NEXT_PUBLIC_PLATTFORM_DOMAIN (lokale
   // Entwicklung) bleibt das komplett inaktiv.

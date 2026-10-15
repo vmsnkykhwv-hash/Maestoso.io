@@ -1,8 +1,8 @@
 -- Website-Modul: eine öffentliche Marketing-Seite pro Organisation (Hero,
 -- Über uns, Speisekarte, Tagesmenü, Galerie, eingebettetes Buchungsformular)
 -- plus Domain-Zuordnung. Jede Organisation bekommt bei Anlage automatisch
--- eine Plattform-Subdomain (z. B. cafedoa.serviceflow.app); eine eigene
--- Domain (z. B. cafedoa.de) ist optional nachrüstbar, sobald der Kunde sie
+-- eine Plattform-Subdomain (z. B. musterbetrieb.maestoso.io); eine eigene
+-- Domain (z. B. musterbetrieb.de) ist optional nachrüstbar, sobald der Kunde sie
 -- besitzt (siehe proxy.ts für die Domain-basierte Weiterleitung).
 --
 -- Bewusst NICHT dupliziert: die auf der Website angezeigten Öffnungszeiten

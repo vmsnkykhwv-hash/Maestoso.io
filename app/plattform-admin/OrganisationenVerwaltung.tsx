@@ -132,7 +132,7 @@ export default function OrganisationenVerwaltung({
                 <input
                   defaultValue={o.customDomain ?? ''}
                   onBlur={(e) => customDomainSpeichern(o.id, e.target.value.trim())}
-                  placeholder="z. B. cafedoa.de"
+                  placeholder="z. B. musterbetrieb.de"
                   className="mt-1 w-full rounded-lg border border-border bg-background px-2.5 py-1.5 text-sm font-normal"
                 />
               </label>

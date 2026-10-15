@@ -44,7 +44,7 @@ export default function DomainEinstellungen({
             setCustomDomain(e.target.value)
             setGespeichert(false)
           }}
-          placeholder="z. B. cafedoa.de"
+          placeholder="z. B. musterbetrieb.de"
           className="w-full rounded-lg border border-border bg-background px-2 py-1.5 text-sm"
         />
         <button
