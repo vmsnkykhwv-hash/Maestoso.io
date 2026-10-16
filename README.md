@@ -735,7 +735,9 @@ Resend-Konfiguration erscheint der Einladungslink zum Kopieren. Lokal (ohne
 
 ### 4. Deployment (Vercel)
 
-- Eigenes Vercel-Projekt für dieses Repo anlegen.
+- Eigenes Vercel-Projekt für dieses Repo anlegen. Die Server-Funktionen
+  laufen per `vercel.json` in Frankfurt (`fra1`), neben der Supabase-Datenbank
+  (eu-central-1) – kurze Wege pro Datenbankabfrage, Daten bleiben in der EU.
 - Die Umgebungsvariablen oben in den Vercel-Projekteinstellungen eintragen
   (Production + Preview).
 - Eigene Domain + Wildcard-Subdomain im Vercel-Projekt hinzufügen
