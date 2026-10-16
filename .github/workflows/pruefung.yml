@@ -22,6 +22,8 @@ jobs:
         env:
           PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
       - run: npx eslint .
+      - name: supabase/komplett.sql passt zu den Migrationen
+        run: bash supabase/komplett-erzeugen.sh && git diff --exit-code supabase/komplett.sql
       - run: npm run typecheck
       - run: npm run build
 

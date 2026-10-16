@@ -681,6 +681,12 @@ Tool-Freischaltung je Mitarbeiter*in, `0026` das
 Änderungsprotokoll, `0027` Admin-Eingriffe darin als „Maestoso-Support“
 (siehe "Zugänge & Rollen").
 
+Ohne Supabase-CLI (z. B. vom iPad): `supabase/komplett.sql` enthält alle
+Migrationen als eine Transaktion – auf GitHub öffnen, „Copy raw file“, im
+SQL Editor eines **leeren** Projekts einfügen und einmal ausführen. Nach
+jeder neuen Migration `bash supabase/komplett-erzeugen.sh` laufen lassen
+(die GitHub-Prüfung achtet darauf).
+
 ### 2. Umgebungsvariablen
 
 `.env.example` kopieren nach `.env.local` und ausfüllen:
