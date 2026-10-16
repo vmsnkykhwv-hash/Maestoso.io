@@ -72,7 +72,7 @@ export default function Preise() {
                     })}
                   </ul>
                   <p className="mt-6 border-t border-m-linie pt-4 text-sm text-m-leise">
-                    Einrichtung einmalig {euro(p.einrichtung)} – bei Jahreszahlung {euro(Math.round(p.einrichtung * (1 - RABATT_EINRICHTUNG_JAHRESZAHLUNG_PROZENT / 100)))}
+                    Einrichtung einmalig {euro(p.einrichtung)} – bei Jahreszahlung {RABATT_EINRICHTUNG_JAHRESZAHLUNG_PROZENT} % günstiger
                   </p>
                   <Link
                     href="/#kontakt"

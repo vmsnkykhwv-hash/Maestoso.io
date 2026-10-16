@@ -588,7 +588,7 @@ einzeln ~150 € plus Provision.
 | | Basic | Plus | Full |
 |---|---|---|---|
 | **Preis** | 49 € | 109 € | 149 € |
-| **Einrichtung einmalig** | 329 € | 479 € | 689 € |
+| **Einrichtung einmalig** | 349 € | 499 € | 699 € |
 | Website | ✓ | ✓ | ✓ |
 | Tischplan & Reservierungen | ✓ | ✓ | ✓ |
 | Zeiterfassung | ✓ | ✓ | ✓ |
@@ -615,8 +615,8 @@ Einrichtung je Einzelmodul 129 €.
 
 ### Konditionen
 
-- Einrichtung kalkuliert mit 60 €/Std. (Basic ~5,5 Std., Plus ~8 Std.,
-  Full ~11,5 Std.), inklusive Domain-Umzug, Website-Inhalten,
+- Einrichtung kalkuliert mit ~60 €/Std. (Basic ~5,5 Std., Plus ~8 Std.,
+  Full ~11,5 Std.), auf runde Preispunkte gesetzt (349 / 499 / 699 €), inklusive Domain-Umzug, Website-Inhalten,
   Grundeinstellungen und Einweisung.
 - Jahreszahlung: 10 % auf die Monatspreise und 25 % auf die Einrichtung.
 - Laufzeit 12 Monate, danach monatlich zum Monatsende kündbar.
