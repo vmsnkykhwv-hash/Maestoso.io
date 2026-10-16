@@ -162,16 +162,18 @@ export default function Startseite() {
       <main>
         {/* Einstieg: das Markenbild, darunter die Zusage in Textform */}
         <section className="bg-m-nacht text-white">
-          <div className="relative mx-auto max-w-6xl">
+          {/* Randlos über die ganze Breite; auf sehr breiten Bildschirmen
+              oben/unten beschnitten statt übergroß, das Logo bleibt mittig. */}
+          <div className="relative aspect-[1983/793] max-h-[min(70vh,680px)] w-full overflow-hidden">
             <Image
               src="/marke/banner.jpg"
               alt="Maestoso – Gastronomie. Einfach. Digital."
-              width={1983}
-              height={793}
+              fill
               priority
-              sizes="(min-width: 1152px) 1152px, 100vw"
-              className="h-auto w-full"
+              sizes="100vw"
+              className="object-cover object-center"
             />
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 h-1/4 bg-gradient-to-b from-transparent to-m-nacht" aria-hidden="true" />
           </div>
           <div className="mx-auto max-w-6xl px-4 pb-16 pt-8 sm:px-6 sm:pt-12">
             <h1 className="max-w-3xl font-marke text-3xl font-semibold leading-tight text-balance sm:text-5xl">

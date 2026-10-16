@@ -3,7 +3,7 @@ import type { ModulSchluessel } from '@/lib/module'
 // Einzige Quelle für alle Preise auf der Website (/preise). Erst
 // veröffentlichen, wenn sie freigegeben sind – bis dahin liefert /preise 404
 // und die Navigation zeigt keinen Link.
-export const PREISE_OEFFENTLICH = false
+export const PREISE_OEFFENTLICH = true
 
 // Kleinunternehmer (§ 19 UStG) dürfen keine Umsatzsteuer ausweisen – dann
 // darf auch nicht "zzgl. USt." dastehen. Mit dem Steuerberater klären.
@@ -64,7 +64,7 @@ export const PAKETE: Paket[] = [
   },
 ]
 
-export const EINRICHTUNG_EINZELMODUL = 129
+export const EINRICHTUNG_EINZELMODUL = 149
 
 export function summeEinzeln(module: ModulSchluessel[]): number {
   return EINZELPREISE.filter((e) => module.includes(e.modul)).reduce((s, e) => s + e.preis, 0)

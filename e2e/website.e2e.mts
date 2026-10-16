@@ -28,7 +28,8 @@ const log = fs.readFileSync(process.env.E2E_NEXT_LOG ?? 'e2e/next.log', 'utf8')
 ok(log.includes('Mail "Neue Anfrage" übersprungen'), 'Benachrichtigung an den Admin ausgelöst (ohne Resend nur geloggt)')
 
 const preise = await fetch(`http://127.0.0.1:${PORT}/preise`, { headers: { host: 'maestoso.test' } })
-ok(preise.status === 404, 'Preisseite ist bis zur Freigabe versteckt')
+const preiseHtml = await preise.text()
+ok(preise.status === 200 && preiseHtml.includes('149') && preiseHtml.includes('Einzelne Module'), 'Preisseite ist freigegeben und zeigt die Pakete')
 const robots = await (await fetch(`http://127.0.0.1:${PORT}/robots.txt`, { headers: { host: 'maestoso.test' } })).text()
 ok(robots.includes('Disallow: /dashboard') && robots.includes('Disallow: /plattform-admin'), 'robots.txt hält Verwaltungsbereiche aus der Suche')
 

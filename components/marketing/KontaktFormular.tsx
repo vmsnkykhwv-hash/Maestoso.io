@@ -90,13 +90,20 @@ export default function KontaktFormular() {
 
       {art === 'demo' && (
         <div className="grid gap-4 sm:grid-cols-2">
-          <div>
+          <div className="min-w-0">
             <label htmlFor="k-tag" className={label}>Wunschtag</label>
-            <input id="k-tag" type="date" min={heute} className={feld} value={werte.wunschtag} onChange={setzen('wunschtag')} />
+            <input
+              id="k-tag"
+              type="date"
+              min={heute}
+              className={`${feld} block min-h-[46px] min-w-0 appearance-none text-left [&::-webkit-date-and-time-value]:text-left`}
+              value={werte.wunschtag}
+              onChange={setzen('wunschtag')}
+            />
           </div>
-          <div>
+          <div className="min-w-0">
             <label htmlFor="k-zeit" className={label}>Tageszeit</label>
-            <select id="k-zeit" className={feld} value={werte.tageszeit} onChange={setzen('tageszeit')}>
+            <select id="k-zeit" className={`${feld} min-h-[46px]`} value={werte.tageszeit} onChange={setzen('tageszeit')}>
               <option value="">egal</option>
               <option value="vormittags">vormittags</option>
               <option value="nachmittags">nachmittags</option>

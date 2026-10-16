@@ -569,9 +569,8 @@ Zwei Ebenen, weil die Verantwortung unterschiedlich verteilt ist:
 ## Preismodell
 
 Stand 16.10.2026, Quelle der Zahlen für die Website: `lib/preise.ts`
-(dort ändern, nicht hier). Die Preisseite `/preise` bleibt per
-`PREISE_OEFFENTLICH` versteckt, bis die Preise freigegeben sind; die
-Startseite nennt bewusst keine Preise.
+(dort ändern, nicht hier). Freigegeben und auf `/preise` veröffentlicht
+(`PREISE_OEFFENTLICH`); die Startseite nennt bewusst keine Preise.
 
 **Ausgangslage:** Ziel ist Profitabilität schon ab 3–5 Kunden, nicht erst
 ab Dutzenden. Laufende Infrastrukturkosten liegen bei ca. 42–60 €/Monat
@@ -611,7 +610,7 @@ Website 19 € · Tischplan 39 € · Zeiterfassung 22 € · Dienstplan 25 € 
 Gutschein-Verkauf 22 € · Veranstaltungsplanung 35 € – Summe 275 €.
 Bewusst leicht angehoben, damit die Pakete deutlich günstiger wirken:
 Basic spart 39 %, Plus 42 %, Full 46 % gegenüber den Einzelpreisen.
-Einrichtung je Einzelmodul 129 €.
+Einrichtung je Einzelmodul 149 €.
 
 ### Konditionen
 
