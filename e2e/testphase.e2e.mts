@@ -87,7 +87,10 @@ await inhaber.goto(`${CAFE}/dashboard`)
 ok(!(await inhaber.getByText('Diese Seite ist gerade nicht erreichbar').isVisible()) && inhaber.url() === `${CAFE}/dashboard`, 'Nach Verlängerung: Dashboard wieder offen, Sitzung gilt weiter')
 
 await admin.getByRole('button', { name: 'Vertrag aktiv' }).click()
-ok(await sichtbar(admin, 'Vertrag aktiv'), 'Admin setzt Vertrag aktiv')
+// Der Button selbst heißt auch "Vertrag aktiv" – erst wenn er verschwindet,
+// ist die Action durch.
+const aktivGesetzt = await admin.getByRole('button', { name: 'Vertrag aktiv' }).waitFor({ state: 'detached', timeout: 8000 }).then(() => true, () => false)
+ok(aktivGesetzt && (await sichtbar(admin, 'Vertrag aktiv')), 'Admin setzt Vertrag aktiv')
 await db.from('organisationen').update({ test_bis: tageAb(-100) }).eq('id', org!.id)
 await inhaber.reload()
 ok(inhaber.url() === `${CAFE}/dashboard` && !(await inhaber.getByText('Diese Seite ist gerade nicht erreichbar').isVisible()), 'Aktiver Vertrag: altes Testende spielt keine Rolle')
