@@ -1,5 +1,7 @@
 import { getServiceClient } from '@/lib/supabase/server'
 import { MODULE, type ModulSchluessel } from '@/lib/module'
+import { vertragAusZeile, type Vertrag } from '@/lib/testphase/daten'
+import { istGesperrt, VERTRAG_SPALTEN } from '@/lib/testphase/regeln'
 
 function leereFreischaltungen(): Record<ModulSchluessel, boolean> {
   return Object.fromEntries(MODULE.map((m) => [m.schluessel, false])) as Record<ModulSchluessel, boolean>
@@ -28,6 +30,7 @@ export type OrganisationMitFreischaltungen = {
   subdomain: string | null
   customDomain: string | null
   freischaltungen: Record<ModulSchluessel, boolean>
+  vertrag: Vertrag
 }
 
 // Alle Organisationen mit ihren Freischaltungen (für den Plattform-Admin).
@@ -37,7 +40,7 @@ export async function ladeOrganisationen(): Promise<OrganisationMitFreischaltung
   const [{ data: organisationen }, { data: freischaltungen }] = await Promise.all([
     supabase
       .from('organisationen')
-      .select('id, name, erstellt_at, subdomain, custom_domain')
+      .select('id, name, erstellt_at, subdomain, custom_domain, vertrag_status, test_bis, loeschung_am')
       .order('erstellt_at', { ascending: false }),
     supabase.from('freischaltungen').select('organisation_id, modul, freigeschaltet'),
   ])
@@ -58,6 +61,7 @@ export async function ladeOrganisationen(): Promise<OrganisationMitFreischaltung
     subdomain: (o.subdomain as string | null) ?? null,
     customDomain: (o.custom_domain as string | null) ?? null,
     freischaltungen: freischaltungenNachOrg.get(o.id as string) ?? leereFreischaltungen(),
+    vertrag: vertragAusZeile(o),
   }))
 }
 
@@ -104,6 +108,7 @@ export type HostOrganisation = {
   // true, wenn die Anfrage über die Plattform-Subdomain kam (nicht über die
   // eigene Domain) – nur dann leitet proxy.ts gegebenenfalls um.
   ueberSubdomain: boolean
+  gesperrt: boolean
 }
 
 function hostOrganisationAusZeile(d: Record<string, unknown>, ueberSubdomain: boolean): HostOrganisation {
@@ -113,10 +118,11 @@ function hostOrganisationAusZeile(d: Record<string, unknown>, ueberSubdomain: bo
     customDomain: (d.custom_domain as string | null) ?? null,
     customDomainAktiv: d.custom_domain_aktiv === true,
     ueberSubdomain,
+    gesperrt: istGesperrt(d),
   }
 }
 
-const HOST_SPALTEN = 'id, subdomain, custom_domain, custom_domain_aktiv'
+const HOST_SPALTEN = `id, subdomain, custom_domain, custom_domain_aktiv, ${VERTRAG_SPALTEN}`
 
 // Domain-basiertes Routing (siehe proxy.ts): ordnet einen eingehenden Host
 // (Plattform-Subdomain oder eigene Domain) einer Organisation zu.

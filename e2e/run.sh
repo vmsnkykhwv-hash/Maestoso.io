@@ -40,6 +40,7 @@ export SUPABASE_SERVICE_ROLE_KEY=$SERVICE_KEY
 export SESSION_SECRET=$(openssl rand -hex 32)
 export ZWEI_FAKTOR_SCHLUESSEL=$(openssl rand -hex 32)
 export PLATTFORM_ADMIN_PIN=482913
+export CRON_SECRET=e2e-cron-geheimnis
 export NEXT_PUBLIC_PLATTFORM_DOMAIN=maestoso.test
 export E2E_NEXT_LOG=e2e/next.log
 unset RESEND_API_KEY VERCEL_API_TOKEN

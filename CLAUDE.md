@@ -44,6 +44,7 @@ Die vollständige Datei-Karte steht in `README.md` → "Aufbau". Kurzfassung:
 | Browser-Tests (`npm run e2e`, Docker) / GitHub-Prüfung | `e2e/`, `.github/workflows/pruefung.yml` |
 | Website maestoso-gastro.de (Startseite, Preise, Anfrageformular) | `app/page.tsx`, `app/preise/`, `components/marketing/`, `app/anfrage-actions.ts` |
 | Preise (einzige Quelle, Schalter für Veröffentlichung) | `lib/preise.ts` |
+| Testphase (Sperre, Fristen, täglicher Cron, Löschung) | `lib/testphase/`, `app/api/cron/testphase/`, `app/gesperrt/` |
 | Anfragen von der Website | `lib/anfragen/`, `app/plattform-admin/anfragen/` |
 | Logo-Zeichen (Vektor) | `lib/markeZeichen.ts`, `components/Logo.tsx` |
 | Preismodell (Herleitung) | `README.md` → "Preismodell" |

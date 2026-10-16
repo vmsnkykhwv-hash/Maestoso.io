@@ -9,6 +9,13 @@ import { MITARBEITER_COOKIE_NAME, verifyMitarbeiterToken } from '@/lib/mitarbeit
 import { ladeMitarbeiter } from '@/lib/mitarbeiter/daten'
 import type { Mitarbeiter } from '@/lib/mitarbeiter/types'
 import type { ModulSchluessel } from '@/lib/module'
+import { getServiceClient } from '@/lib/supabase/server'
+import { istGesperrt, VERTRAG_SPALTEN } from '@/lib/testphase/regeln'
+
+async function organisationGesperrt(organisationId: string): Promise<boolean> {
+  const { data } = await getServiceClient().from('organisationen').select(VERTRAG_SPALTEN).eq('id', organisationId).maybeSingle()
+  return !data || istGesperrt(data)
+}
 
 // Nur in Server Components/Actions verwendbar (next/headers) – proxy.ts
 // liest den Cookie direkt über NextRequest und prüft nur die Signatur.
@@ -51,6 +58,9 @@ export const getBetriebsSitzung = cache(async (): Promise<BetriebsSitzung | null
   // Betriebs, gilt nur eine Sitzung genau dieses Betriebs.
   const hostOrganisation = (await headers()).get(ORG_HOST_HEADER)
   if (ergebnis && hostOrganisation && hostOrganisation !== ergebnis.organisationId) return null
+  // Abgelaufene Testphase: kein Konto und kein Gerät des Betriebs kommt
+  // mehr ins Dashboard oder durch eine Server Action.
+  if (ergebnis && (await organisationGesperrt(ergebnis.organisationId))) return null
   return ergebnis
 })
 

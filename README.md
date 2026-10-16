@@ -620,12 +620,37 @@ Einrichtung je Einzelmodul 149 €.
 - Jahreszahlung: 10 % auf die Monatspreise und 25 % auf die Einrichtung.
 - Laufzeit 12 Monate, danach monatlich zum Monatsende kündbar.
 - 30 Tage kostenlos testen; danach automatische Sperre, nach weiteren
-  30 Tagen ohne Entscheidung Löschung aller Zugänge und Daten (noch zu
-  bauen, siehe "Nächste Schritte").
+  30 Tagen ohne Entscheidung Löschung aller Zugänge und Daten (siehe
+  "Testphase" unten).
 - Netto-Preise. Umsatzsteuer-Hinweis per `KLEINUNTERNEHMER` in
   `lib/preise.ts` umschaltbar (Kleinunternehmer nach § 19 UStG dürfen
   keine USt. ausweisen) – mit dem Steuerberater klären.
 - Kein Gründerkunden-Rabatt.
+
+### Testphase (Migration `0029`, `lib/testphase/`)
+
+- Jeder neue Betrieb startet mit `vertrag_status = 'test'` und
+  `test_bis = Anlage + 30 Tage`. Ist `test_bis` vorbei, gilt der Betrieb
+  sofort als gesperrt (`istGesperrt` in `lib/testphase/regeln.ts`) – nicht
+  erst nach dem Cron-Lauf.
+- Gesperrt heißt: `proxy.ts` zeigt auf der Domain des Betriebs nur noch
+  `/gesperrt` (Gäste lesen nichts von einer Testphase),
+  `getBetriebsSitzung()` liefert keine Sitzung mehr (Dashboard + Server
+  Actions), `organisationsName()` liefert `null` (alle Gäste-Actions und
+  Team-Seiten behandeln den Betrieb wie unbekannt).
+- Täglicher Cron (`vercel.json`, 04:00 UTC → `/api/cron/testphase`, nur mit
+  `CRON_SECRET`): 7 Tage vor Testende Erinnerung, bei Testende Status
+  `gesperrt` + `loeschung_am = heute + 30 Tage` + Mail, 7 Tage vor der
+  Löschung Erinnerung, dann Löschung (Vercel-Domain, Storage-Dateien,
+  Datenbank per Cascade) + Abschlussmail. Mails gehen an alle aktiven
+  Verwaltungskonten, Antworten an die Plattform-Admins; die Admins
+  bekommen zusätzlich eine Zusammenfassung. Außerdem löscht der Lauf
+  Website-Anfragen, die älter als 12 Monate sind (Datenschutzerklärung).
+- Plattform-Admin: „Vertrag aktiv“ beendet alle Fristen, „Test verlängern“
+  gibt 14 Tage ab dem späteren von heute/Testende und hebt eine Sperre
+  sofort auf. Beides steht im Änderungsprotokoll des Betriebs.
+- Beim ersten Einspielen von `0029` bekommen bestehende Betriebe
+  Testende = Anlage + 30 Tage, aber mindestens heute + 7 Tage.
 
 ### Online-Bestellung ist bewusst der Ausreißer nach oben
 
@@ -741,6 +766,10 @@ jeder neuen Migration `bash supabase/komplett-erzeugen.sh` laufen lassen
   Bewertung-Modul (siehe "Statistiken & Auswertungen"). Signing Secret aus
   dem bei Resend angelegten Webhook-Endpoint (`<domain>/api/resend/webhook`,
   Events "email.opened" + "email.clicked").
+- `CRON_SECRET` – langer Zufallsstring (`openssl rand -hex 32`). Vercel
+  schickt ihn beim täglichen Testphasen-Lauf mit; ohne ihn lehnt
+  `/api/cron/testphase` jeden Aufruf ab: keine Mails, keine Löschung (die
+  Sperre nach Testende greift trotzdem).
 - `NEXT_PUBLIC_PLATTFORM_DOMAIN` – eure eigene Plattform-Domain (z. B.
   `maestoso-gastro.de`), ohne Protokoll/Subdomain. Lokal leer lassen – ohne
   diese Variable ist das Domain-Routing fürs Website-Modul inaktiv.

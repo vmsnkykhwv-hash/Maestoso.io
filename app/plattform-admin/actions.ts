@@ -10,6 +10,7 @@ import { MODULE, type ModulSchluessel } from '@/lib/module'
 import { subdomainVorschlagen, type OrganisationMitFreischaltungen } from '@/lib/organisationen'
 import { supportProtokollieren } from '@/lib/protokoll'
 import { verwaltungBenachrichtigen } from '@/lib/konten/sicherheitshinweis'
+import { organisationEndgueltigLoeschen, testVerlaengern, vertragAktivSetzen, vertragAusZeile, type Vertrag } from '@/lib/testphase/daten'
 import { domainEntfernen, domainHinzufuegen, domainStatusLaden, vercelKonfiguriert, type DomainStatus } from '@/lib/vercel/domains'
 
 // Server Actions sind eigenständig aufrufbare Endpunkte (über die
@@ -56,7 +57,7 @@ export async function organisationAnlegen(
   const { data, error } = await supabase
     .from('organisationen')
     .insert({ name: name.trim(), subdomain })
-    .select('id, name, erstellt_at, subdomain, custom_domain')
+    .select('id, name, erstellt_at, subdomain, custom_domain, vertrag_status, test_bis, loeschung_am')
     .single()
 
   if (error || !data) return { fehler: error?.message ?? 'Organisation konnte nicht angelegt werden' }
@@ -87,6 +88,7 @@ export async function organisationAnlegen(
       ModulSchluessel,
       boolean
     >,
+    vertrag: vertragAusZeile(data),
   }
   return { organisation, einladung, benutzer: await ladeBenutzerDerOrganisation(organisation.id) }
 }
@@ -231,21 +233,30 @@ export async function modulFreischaltenUmschalten(
 
 export async function organisationLoeschen(organisationId: string) {
   await plattformAdminOderFehler()
-
-  const supabase = getServiceClient()
-
-  // Sonst bliebe die Domain des Ex-Kunden im Vercel-Projekt und zeigte die
-  // Maestoso-Login-Seite statt einer Fehlermeldung.
-  const { data } = await supabase.from('organisationen').select('custom_domain').eq('id', organisationId).maybeSingle()
-  const domain = data?.custom_domain as string | null | undefined
-  if (domain && vercelKonfiguriert()) {
-    const entfernt = await domainEntfernen(domain)
-    if (entfernt.fehler) throw new Error(`Domain ${domain} konnte nicht aus Vercel entfernt werden: ${entfernt.fehler}`)
-  }
-
-  const { error } = await supabase.from('organisationen').delete().eq('id', organisationId)
-  if (error) throw new Error(error.message)
+  const ergebnis = await organisationEndgueltigLoeschen(organisationId)
+  if (ergebnis.fehler) throw new Error(ergebnis.fehler)
   revalidatePath('/plattform-admin')
+}
+
+// Testphase (lib/testphase): "Vertrag aktiv" beendet alle Fristen,
+// "Test verlängern" gibt 14 Tage mehr und hebt eine Sperre sofort auf.
+export async function vertragAktivAktion(organisationId: string): Promise<{ fehler?: string; vertrag?: Vertrag }> {
+  await plattformAdminOderFehler()
+  const ergebnis = await vertragAktivSetzen(organisationId)
+  if (ergebnis.vertrag) await supportProtokollieren(organisationId, 'plattform', 'Vertrag aktiv gesetzt (Testphase beendet)')
+  revalidatePath('/plattform-admin')
+  return ergebnis
+}
+
+export async function testVerlaengernAktion(organisationId: string): Promise<{ fehler?: string; vertrag?: Vertrag }> {
+  await plattformAdminOderFehler()
+  const ergebnis = await testVerlaengern(organisationId)
+  if (ergebnis.vertrag?.testBis) {
+    const bis = new Date(ergebnis.vertrag.testBis).toLocaleDateString('de-DE', { timeZone: 'Europe/Berlin' })
+    await supportProtokollieren(organisationId, 'plattform', 'Testphase verlängert', `bis ${bis}`)
+  }
+  revalidatePath('/plattform-admin')
+  return ergebnis
 }
 
 // Weiteres Inhaber-Konto bzw. neue Einladung, z. B. wenn die erste Mail nie

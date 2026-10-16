@@ -1,5 +1,6 @@
 import { getServiceClient } from '@/lib/supabase/server'
 import type { Blockierung, Einstellungen, ReservierungAusnahme, Reservierung, ReservierungStatus, Tisch } from './types'
+import { istGesperrt, VERTRAG_SPALTEN } from '@/lib/testphase/regeln'
 
 const STANDARD_EINSTELLUNGEN: Einstellungen = {
   wocheStart: '09:00',
@@ -432,8 +433,12 @@ export async function ausnahmeLoeschen(id: string, organisationId: string): Prom
   return {}
 }
 
+// null auch für einen gesperrten Betrieb (Testphase abgelaufen): alle
+// Gästeseiten, Gäste-Actions und Team-Seiten behandeln ihn dadurch wie einen
+// unbekannten Betrieb, ohne dass jede Stelle die Sperre selbst prüfen muss.
 export async function organisationsName(organisationId: string): Promise<string | null> {
   const supabase = getServiceClient()
-  const { data } = await supabase.from('organisationen').select('name').eq('id', organisationId).maybeSingle()
-  return (data?.name as string | undefined) ?? null
+  const { data } = await supabase.from('organisationen').select(`name, ${VERTRAG_SPALTEN}`).eq('id', organisationId).maybeSingle()
+  if (!data || istGesperrt(data)) return null
+  return data.name as string
 }

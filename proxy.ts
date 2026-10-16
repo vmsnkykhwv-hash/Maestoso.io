@@ -50,6 +50,11 @@ export async function proxy(request: NextRequest) {
       hostOrganisationId = organisation.id
       requestHeaders.set(ORG_HOST_HEADER, organisation.id)
 
+      // Testphase abgelaufen: jede Seite des Betriebs zeigt nur noch den
+      // Hinweis. Server Actions und Gäste-Actions sperren zusätzlich
+      // getBetriebsSitzung() bzw. organisationsName().
+      if (organisation.gesperrt && !pathname.startsWith('/api/')) return umschreiben('/gesperrt')
+
       const teamPfad = internerTeamPfad(organisation.id, pathname)
       if (teamPfad) return umschreiben(teamPfad)
 

@@ -2,13 +2,31 @@
 
 import { useState, useTransition } from 'react'
 import { Trash2 } from 'lucide-react'
-import { modulFreischaltenUmschalten, organisationAnlegen, organisationLoeschen } from './actions'
+import { modulFreischaltenUmschalten, organisationAnlegen, organisationLoeschen, testVerlaengernAktion, vertragAktivAktion } from './actions'
 import DomainVerwaltung from './DomainVerwaltung'
 import KontenVerwaltung, { EinladungsLink } from './KontenVerwaltung'
 import type { BenutzerUebersicht } from '@/lib/konten/einladung'
 import { MODULE, type ModulSchluessel } from '@/lib/module'
 import type { OrganisationMitFreischaltungen } from '@/lib/organisationen'
+import type { Vertrag } from '@/lib/testphase/daten'
+import { istGesperrt } from '@/lib/testphase/regeln'
 import { cn } from '@/lib/utils'
+
+function datum(iso: string | null): string {
+  return iso ? new Date(iso).toLocaleDateString('de-DE', { timeZone: 'Europe/Berlin' }) : '–'
+}
+
+function VertragAnzeige({ vertrag }: { vertrag: Vertrag }) {
+  if (vertrag.status === 'aktiv') return <span className="rounded-full bg-success-bg px-2 py-0.5 text-xs font-medium text-success">Vertrag aktiv</span>
+  if (vertrag.status === 'gesperrt' || istGesperrt({ vertrag_status: vertrag.status, test_bis: vertrag.testBis })) {
+    return (
+      <span className="rounded-full bg-danger-bg px-2 py-0.5 text-xs font-medium text-danger">
+        Gesperrt{vertrag.loeschungAm ? ` · Löschung am ${datum(vertrag.loeschungAm)}` : ''}
+      </span>
+    )
+  }
+  return <span className="rounded-full bg-locked-bg px-2 py-0.5 text-xs font-medium text-locked">Test bis {datum(vertrag.testBis)}</span>
+}
 
 export default function OrganisationenVerwaltung({
   anfangsOrganisationen,
@@ -55,6 +73,19 @@ export default function OrganisationenVerwaltung({
       )
     )
     startTransition(() => modulFreischaltenUmschalten(organisationId, modul, freigeschaltet))
+  }
+
+  function vertragAendern(organisationId: string, aktion: typeof vertragAktivAktion) {
+    setFehler(null)
+    startTransition(async () => {
+      const ergebnis = await aktion(organisationId)
+      if (ergebnis.fehler || !ergebnis.vertrag) {
+        setFehler(ergebnis.fehler ?? 'Änderung fehlgeschlagen')
+        return
+      }
+      const vertrag = ergebnis.vertrag
+      setOrganisationen((prev) => prev.map((o) => (o.id === organisationId ? { ...o, vertrag } : o)))
+    })
   }
 
   function loeschen(organisationId: string) {
@@ -111,6 +142,27 @@ export default function OrganisationenVerwaltung({
               <div>
                 <h3 className="font-semibold">{o.name}</h3>
                 <p className="text-xs text-muted">Subdomain: {o.subdomain ?? '–'}</p>
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  <VertragAnzeige vertrag={o.vertrag} />
+                  {o.vertrag.status !== 'aktiv' && (
+                    <>
+                      <button
+                        onClick={() => vertragAendern(o.id, vertragAktivAktion)}
+                        disabled={pending}
+                        className="rounded-lg border border-border px-2.5 py-1 text-xs font-medium disabled:opacity-40"
+                      >
+                        Vertrag aktiv
+                      </button>
+                      <button
+                        onClick={() => vertragAendern(o.id, testVerlaengernAktion)}
+                        disabled={pending}
+                        className="rounded-lg border border-border px-2.5 py-1 text-xs font-medium disabled:opacity-40"
+                      >
+                        Test verlängern (+14 Tage)
+                      </button>
+                    </>
+                  )}
+                </div>
               </div>
               {loeschenBestaetigenId === o.id ? (
                 <div className="flex flex-none items-center gap-2">
