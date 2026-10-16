@@ -1042,9 +1042,19 @@ Resend-Konfiguration erscheint der Einladungslink zum Kopieren. Lokal (ohne
     - ~~Domain-/Markenprüfung~~ – erledigt, Name auf "Maestoso" geändert
       (siehe "Aktueller Stand" oben), Domain `maestoso-gastro.de` (plus
       `maestosogastro.de`) registriert.
-    - Produktivumgebung einrichten (echtes Supabase-Projekt, echte
-      Umgebungsvariablen, Resend-Absende-Domain verifizieren, PayPal auf
-      Live-Modus je Organisation umstellen) – siehe "Setup" oben.
+    - ~~Produktivumgebung einrichten~~ – erledigt (16.10.2026):
+      Supabase-Projekt in Frankfurt (alle Migrationen über
+      `supabase/komplett.sql`), Vercel-Projekt mit Funktionen in `fra1`,
+      `maestoso-gastro.de` + Wildcard über Vercel-DNS,
+      `maestosogastro.de` über INWX-DNS (A/CNAME auf Vercel, leitet weiter –
+      die Nameserver-Umstellung lehnte DENIC ab, solange Vercel die Zone
+      noch nicht kannte), Resend mit verifizierter Absende-Domain
+      `mail.maestoso-gastro.de` (EU). Einladung, 2FA und Betriebs-Subdomain
+      mit einem Testbetrieb live geprüft. Noch offen: PayPal je
+      Organisation auf Live-Modus, `VERCEL_API_TOKEN`/`VERCEL_PROJECT_ID`
+      für Kunden-Domains aus dem Admin, vor dem ersten zahlenden Kunden
+      Vercel Pro (Hobby ist nur nicht-kommerziell) und Supabase Pro
+      (tägliche Backups).
     - Einmal komplett mit echten Daten durch alle Module klicken
       (bisher nur per Demo-Artefakt und `npm run build`/`eslint` geprüft,
       nie mit einem echten Supabase-Projekt im Browser).
