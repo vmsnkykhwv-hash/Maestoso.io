@@ -4,8 +4,8 @@ import Wortmarke from './Wortmarke'
 
 const LINKS = [
   { href: '/#funktionen', text: 'Funktionen' },
+  { href: '/#rechnung', text: 'Was du sparst' },
   { href: '/#ablauf', text: 'So arbeitest du' },
-  { href: '/#sicherheit', text: 'Sicherheit' },
   ...(PREISE_OEFFENTLICH ? [{ href: '/preise', text: 'Preise' }] : []),
   { href: '/#fragen', text: 'Fragen' },
 ]

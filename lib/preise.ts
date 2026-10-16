@@ -45,26 +45,41 @@ export const PAKETE: Paket[] = [
     name: 'Basic',
     preis: 49,
     einrichtung: 349,
-    zusage: 'Online sichtbar und buchbar',
+    zusage: 'Für den Start: gefunden werden, Tische füllen, Zeiten sauber erfassen.',
     module: ['website', 'tischplan', 'zeiterfassung'],
   },
   {
     name: 'Plus',
     preis: 109,
     einrichtung: 499,
-    zusage: 'Aktiv Umsatz machen, Personal koordinieren',
+    zusage: 'Für Betriebe mit Abhol- oder Lieferservice und Schichtbetrieb.',
     module: ['website', 'tischplan', 'zeiterfassung', 'dienstplan', 'bestellung', 'bewertung'],
   },
   {
     name: 'Full',
     preis: 149,
     einrichtung: 699,
-    zusage: 'Das komplette Backoffice inklusive Sonderanlässe',
+    zusage: 'Für Betriebe mit Lager, Gutscheinverkauf und Feiern.',
     module: ['website', 'tischplan', 'zeiterfassung', 'dienstplan', 'bestellung', 'bewertung', 'lager', 'gutschein', 'veranstaltung'],
   },
 ]
 
 export const EINRICHTUNG_EINZELMODUL = 149
+
+// Rechenbeispiel Lieferportal (Startseite und /preise): Provisionssätze
+// großer Portale laut deren öffentlichen Angaben.
+export const BEISPIEL_BESTELLUMSATZ = 3000
+export const PORTAL_PROVISION_PROZENT = { von: 13, bis: 30 }
+export function portalProvision(): { von: number; bis: number } {
+  return {
+    von: (BEISPIEL_BESTELLUMSATZ * PORTAL_PROVISION_PROZENT.von) / 100,
+    bis: (BEISPIEL_BESTELLUMSATZ * PORTAL_PROVISION_PROZENT.bis) / 100,
+  }
+}
+// Günstigstes Paket mit Online-Bestellung – der faire Vergleichspreis.
+export function guenstigstesPaketMitBestellung(): Paket {
+  return PAKETE.filter((p) => p.module.includes('bestellung')).sort((a, b) => a.preis - b.preis)[0]
+}
 
 export function summeEinzeln(module: ModulSchluessel[]): number {
   return EINZELPREISE.filter((e) => module.includes(e.modul)).reduce((s, e) => s + e.preis, 0)

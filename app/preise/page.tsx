@@ -15,7 +15,10 @@ import {
   RABATT_JAHRESZAHLUNG_PROZENT,
   TESTPHASE_TAGE,
   UST_HINWEIS,
+  BEISPIEL_BESTELLUMSATZ,
   euro,
+  guenstigstesPaketMitBestellung,
+  portalProvision,
   summeEinzeln,
 } from '@/lib/preise'
 
@@ -27,6 +30,8 @@ export const metadata: Metadata = {
 
 export default function Preise() {
   if (!PREISE_OEFFENTLICH) notFound()
+  const provision = portalProvision()
+  const paket = guenstigstesPaketMitBestellung()
 
   return (
     <div className="bg-m-creme font-sans text-m-tinte">
@@ -36,7 +41,7 @@ export default function Preise() {
           <p className="font-marke text-sm font-medium uppercase tracking-[0.16em] text-m-gold-dunkel">Preise</p>
           <h1 className="mt-2 max-w-3xl font-marke text-3xl font-semibold text-balance sm:text-5xl">Feste Monatspreise. Keine Provision, kein Preis pro Kopf.</h1>
           <p className="mt-4 max-w-2xl text-m-leise">
-            Je Betrieb und Monat, {TESTPHASE_TAGE} Tage kostenlos testen. Bei jährlicher Zahlung {RABATT_JAHRESZAHLUNG_PROZENT} % günstiger.
+            Preise je Betrieb und Monat. {TESTPHASE_TAGE} Tage kostenlos testen, bei jährlicher Zahlung {RABATT_JAHRESZAHLUNG_PROZENT} % günstiger.
           </p>
 
           <div className="mt-12 grid gap-5 lg:grid-cols-3">
@@ -47,7 +52,7 @@ export default function Preise() {
                 <article key={p.name} className={`flex flex-col rounded-2xl border bg-white p-7 ${empfohlen ? 'border-m-gold shadow-[0_12px_40px_-20px_rgba(161,115,74,0.6)]' : 'border-m-linie'}`}>
                   <div className="flex items-center justify-between">
                     <h2 className="font-marke text-2xl font-semibold">{p.name}</h2>
-                    {empfohlen && <span className="rounded-full bg-m-papier px-2.5 py-0.5 text-xs font-semibold text-m-gold-dunkel">Beliebt</span>}
+                    {empfohlen && <span className="rounded-full bg-m-papier px-2.5 py-0.5 text-xs font-semibold text-m-gold-dunkel">Unsere Empfehlung</span>}
                   </div>
                   <p className="mt-1 min-h-10 text-sm text-m-leise">{p.zusage}</p>
                   <p className="mt-6 font-marke text-4xl font-semibold tabular-nums">
@@ -85,6 +90,16 @@ export default function Preise() {
             })}
           </div>
 
+          {/* Gleiche Rechnung wie auf der Startseite, hier mit dem konkreten
+              Paketpreis – der Vergleich, der den Monatspreis einordnet. */}
+          <section className="mt-10 rounded-2xl bg-m-nacht p-6 text-white sm:p-8">
+            <p className="font-marke text-sm font-medium uppercase tracking-[0.16em] text-m-gold">Rechenbeispiel</p>
+            <p className="mt-3 max-w-3xl text-lg text-white/85">
+              Bei {euro(BEISPIEL_BESTELLUMSATZ)} Bestellumsatz im Monat nimmt ein Lieferportal {euro(provision.von)} bis {euro(provision.bis)} Provision. Das Paket {paket.name} mit Online-Bestellung kostet {euro(paket.preis)} im Monat, fest. Es bleiben dir also mindestens{' '}
+              <strong className="text-m-gold">{euro(provision.von - paket.preis)} mehr im Monat</strong>, bei mehr Bestellungen entsprechend mehr.
+            </p>
+          </section>
+
           <section className="mt-16 grid gap-10 lg:grid-cols-2">
             <div>
               <h2 className="font-marke text-2xl font-semibold">Einzelne Module</h2>
@@ -103,9 +118,9 @@ export default function Preise() {
               </div>
             </div>
             <div>
-              <h2 className="font-marke text-2xl font-semibold">Gut zu wissen</h2>
+              <h2 className="font-marke text-2xl font-semibold">Konditionen</h2>
               <ul className="mt-5 space-y-3 text-[15px] leading-relaxed text-m-leise">
-                <li><strong className="text-m-tinte">{TESTPHASE_TAGE} Tage kostenlos testen.</strong> Entscheidest du dich dagegen, löschen wir deine Daten vollständig.</li>
+                <li><strong className="text-m-tinte">{TESTPHASE_TAGE} Tage kostenlos testen.</strong> Der Test endet von selbst, kündigen musst du nichts. Machst du nicht weiter, löschen wir deine Daten vollständig.</li>
                 <li><strong className="text-m-tinte">Laufzeit {MINDESTLAUFZEIT_MONATE} Monate,</strong> danach monatlich zum Monatsende kündbar.</li>
                 <li><strong className="text-m-tinte">Jahreszahlung:</strong> {RABATT_JAHRESZAHLUNG_PROZENT} % auf die Monatspreise und {RABATT_EINRICHTUNG_JAHRESZAHLUNG_PROZENT} % auf die Einrichtung.</li>
                 <li><strong className="text-m-tinte">Einrichtung inklusive Domain-Umzug,</strong> Website-Inhalte, Grundeinstellungen und Einweisung deines Teams.</li>
