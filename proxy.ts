@@ -140,5 +140,5 @@ export async function proxy(request: NextRequest) {
 export const config = {
   // Icons und Manifest sind für alle Domains gleich – ohne Ausnahme würde
   // der Proxy sie auf einer Betriebsdomain auf die Website umschreiben.
-  matcher: ['/((?!_next/static|_next/image|favicon.ico|icon.svg|apple-icon|manifest.webmanifest).*)'],
+  matcher: ['/((?!_next/static|_next/image|favicon.ico|icon.svg|apple-icon|manifest.webmanifest|robots.txt|sitemap.xml|marke/).*)'],
 }

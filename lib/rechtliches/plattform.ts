@@ -17,6 +17,11 @@ export const PLATTFORM_BETREIBER: RechtlicheAngaben = {
   datenschutzKontakt: '',
 }
 
+// Solange Platzhalter drinstehen, darf die Website nicht in Suchmaschinen
+// landen (app/page.tsx setzt dann noindex) – ein Impressum mit
+// "[Straße und Hausnummer]" im Google-Index wäre schlimmer als gar keins.
+export const RECHTSTEXTE_VOLLSTAENDIG = !Object.values(PLATTFORM_BETREIBER).some((wert) => wert.includes('['))
+
 // Datum, ab dem die Texte gelten – bei jeder inhaltlichen Änderung
 // mitziehen, damit nachvollziehbar bleibt, welche Fassung wann galt.
 export const STAND_RECHTSTEXTE = 'Oktober 2026'

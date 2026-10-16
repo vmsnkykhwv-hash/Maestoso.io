@@ -1,37 +1,17 @@
 import { ImageResponse } from 'next/og'
+import { MARKE_GOLD, MARKE_PFAD, MARKE_VIEWBOX } from '@/lib/markeZeichen'
 
 // iOS nimmt für "Zum Home-Bildschirm" kein SVG – deshalb ein PNG, gerendert
-// aus denselben drei Taktstrichen wie app/icon.svg.
+// aus demselben Vektor-"M" wie app/icon.svg.
 export const size = { width: 180, height: 180 }
 export const contentType = 'image/png'
 
-const STRICHE = [
-  { x: 2, y: 3, w: 4, h: 18, o: 1 },
-  { x: 8, y: 7, w: 4, h: 14, o: 0.4 },
-  { x: 14, y: 1, w: 4, h: 20, o: 1 },
-  { x: 20, y: 9, w: 2.4, h: 12, o: 0.4 },
-]
-
 export default function AppleIcon() {
-  const faktor = 5
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${MARKE_VIEWBOX}"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${MARKE_GOLD[0]}"/><stop offset=".5" stop-color="${MARKE_GOLD[1]}"/><stop offset="1" stop-color="${MARKE_GOLD[2]}"/></linearGradient></defs><path fill="url(#g)" d="${MARKE_PFAD}"/></svg>`
   return new ImageResponse(
     (
-      <div style={{ width: '100%', height: '100%', display: 'flex', background: '#1b2340', position: 'relative' }}>
-        {STRICHE.map((s, i) => (
-          <div
-            key={i}
-            style={{
-              position: 'absolute',
-              left: 30 + s.x * faktor,
-              top: 30 + s.y * faktor,
-              width: s.w * faktor,
-              height: s.h * faktor,
-              borderRadius: (s.w * faktor) / 2,
-              background: '#c9962b',
-              opacity: s.o,
-            }}
-          />
-        ))}
+      <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#141414' }}>
+        <img src={`data:image/svg+xml;base64,${Buffer.from(svg).toString('base64')}`} width={128} height={105} alt="" />
       </div>
     ),
     size

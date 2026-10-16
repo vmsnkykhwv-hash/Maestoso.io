@@ -42,7 +42,11 @@ Die vollständige Datei-Karte steht in `README.md` → "Aufbau". Kurzfassung:
 | Jedes Modul | `app/dashboard/<modul>/` (UI) + `lib/<modul>/` (Logik, DB-Zugriff) |
 | DB-Schema | `supabase/migrations/` (nummeriert, nacheinander anwenden) |
 | Browser-Tests (`npm run e2e`, Docker) / GitHub-Prüfung | `e2e/`, `.github/workflows/pruefung.yml` |
-| Preismodell | `README.md` → "Preismodell" |
+| Website maestoso-gastro.de (Startseite, Preise, Anfrageformular) | `app/page.tsx`, `app/preise/`, `components/marketing/`, `app/anfrage-actions.ts` |
+| Preise (einzige Quelle, Schalter für Veröffentlichung) | `lib/preise.ts` |
+| Anfragen von der Website | `lib/anfragen/`, `app/plattform-admin/anfragen/` |
+| Logo-Zeichen (Vektor) | `lib/markeZeichen.ts`, `components/Logo.tsx` |
+| Preismodell (Herleitung) | `README.md` → "Preismodell" |
 | Sicherheits-Audit (was schon geprüft/behoben wurde) | `README.md` → "Sicherheits-Audit vor dem Livegang" |
 | Was vor dem Live-Betrieb noch fehlt | `README.md` → "Nächste Schritte" |
 
@@ -86,7 +90,7 @@ Nicht wiederholen:
   `musterbetrieb.de` – ein konkreter Domainname eines anderen Projekts
   hatte sich hier mehrfach eingeschlichen und wurde bereinigt.
 - **Preismodell ist nur Dokumentation, keine Durchsetzung.** Die
-  Drei-Stufen-Preise stehen im README; im Code gibt es nur eine manuelle
+  Drei-Stufen-Preise stehen in `lib/preise.ts` (Website) und im README; im Code gibt es nur eine manuelle
   Ein/Aus-Freischaltung pro Modul und Organisation
   (`freischaltungen`-Tabelle, `app/plattform-admin/`). Keine
   Abo-Automatik, keine Rechnungsstellung, keine Nutzungsgrenzen.

@@ -1,9 +1,335 @@
-import { redirect } from 'next/navigation'
-import { getSitzung } from '@/lib/session'
+import type { Metadata } from 'next'
+import Image from 'next/image'
+import Link from 'next/link'
+import {
+  CalendarDays,
+  Clock,
+  Boxes,
+  Gift,
+  Globe,
+  History,
+  KeyRound,
+  LayoutGrid,
+  MonitorSmartphone,
+  PartyPopper,
+  Server,
+  ShieldCheck,
+  ShoppingBag,
+  Smartphone,
+  Star,
+  UserRound,
+  type LucideIcon,
+} from 'lucide-react'
+import Kopf from '@/components/marketing/Kopf'
+import Fuss from '@/components/marketing/Fuss'
+import KontaktFormular from '@/components/marketing/KontaktFormular'
+import { RECHTSTEXTE_VOLLSTAENDIG } from '@/lib/rechtliches/plattform'
+import { MINDESTLAUFZEIT_MONATE, PREISE_OEFFENTLICH, TESTPHASE_TAGE } from '@/lib/preise'
 
-export default async function RootPage() {
-  const sitzung = await getSitzung()
+const domain = process.env.NEXT_PUBLIC_PLATTFORM_DOMAIN
 
-  if (!sitzung) redirect('/login')
-  redirect(sitzung.typ === 'plattform-admin' ? '/plattform-admin' : '/dashboard')
+export const metadata: Metadata = {
+  ...(domain ? { metadataBase: new URL(`https://${domain}`) } : {}),
+  title: 'Maestoso – Software für Gastronomie: Reservierung, Dienstplan, Zeiterfassung, Online-Bestellung',
+  description:
+    'Website, Reservierungen, Zeiterfassung, Dienstplan, Online-Bestellung, Gutscheine und Lager in einem System – unter deiner eigenen Domain, ohne Provision und ohne Aufpreis pro Mitarbeiter.',
+  openGraph: {
+    title: 'Maestoso – Gastronomie. Einfach. Digital.',
+    description: 'Ein System für deinen ganzen Betrieb: Website, Reservierungen, Personal, Bestellungen und Lager.',
+    images: [{ url: '/marke/vorschau.jpg', width: 1200, height: 630 }],
+    locale: 'de_DE',
+    type: 'website',
+  },
+  // Erst indexieren, wenn das Impressum echte Angaben hat.
+  robots: RECHTSTEXTE_VOLLSTAENDIG ? { index: true, follow: true } : { index: false, follow: false },
+}
+
+// Website zuerst: Sie ist die Adresse, unter der Gäste reservieren,
+// bestellen und Gutscheine kaufen – alles andere baut darauf auf.
+const FUNKTIONEN: { icon: LucideIcon; name: string; text: string; grundlage?: boolean }[] = [
+  {
+    icon: Globe,
+    name: 'Website',
+    text: 'Deine Seite mit Speisekarte, Tagesmenü, Bildern und Öffnungszeiten – unter deiner eigenen Domain. Reservieren, Bestellen und Gutscheine sind direkt eingebaut.',
+    grundlage: true,
+  },
+  {
+    icon: LayoutGrid,
+    name: 'Tischplan & Reservierungen',
+    text: 'Online-Reservierungen rund um die Uhr, Tische, Sperrzeiten und Ausnahmen. Kein Doppelbuchen, auch wenn zwei Gäste gleichzeitig klicken.',
+  },
+  {
+    icon: Clock,
+    name: 'Zeiterfassung',
+    text: 'Dein Team erfasst Arbeitszeiten am Tresen-Tablet mit PIN. Minijob- und Stundengrenzen im Blick, Export für die Lohnabrechnung.',
+  },
+  {
+    icon: CalendarDays,
+    name: 'Dienstplan',
+    text: 'Schichten planen, Verfügbarkeiten sehen, Schichten tauschen. Jede Person sieht ihren Plan auf dem eigenen Handy.',
+  },
+  {
+    icon: ShoppingBag,
+    name: 'Online-Bestellung',
+    text: 'Abholung und Lieferung über deine Website, mit Pausenknopf, wenn die Küche voll ist. Ohne Provision pro Bestellung.',
+  },
+  {
+    icon: Star,
+    name: 'Google-Bewertungsanfrage',
+    text: 'Gäste, die da waren, bekommen nach dem Besuch automatisch eine freundliche Bitte um eine Google-Bewertung.',
+  },
+  {
+    icon: Boxes,
+    name: 'Lagerbestand',
+    text: 'Bestandsprüfungen passend zum Liefertag jedes Lieferanten, automatisch der Schicht zugewiesen. Die Bestellliste entsteht von selbst.',
+  },
+  {
+    icon: Gift,
+    name: 'Gutschein-Verkauf',
+    text: 'Gutscheine online verkaufen, auf Wunsch mit PayPal, und beim Besuch am Tresen per Code einlösen.',
+  },
+  {
+    icon: PartyPopper,
+    name: 'Veranstaltungen',
+    text: 'Anfragen für Feiern und geschlossene Gesellschaften annehmen, bestätigen und die Tische dafür automatisch blocken.',
+  },
+]
+
+const PLAETZE: { icon: LucideIcon; titel: string; text: string }[] = [
+  {
+    icon: UserRound,
+    titel: 'Du als Inhaberin oder Inhaber',
+    text: 'Von überall: im Büro, zu Hause, unterwegs. Anmeldung mit Passwort und Bestätigungscode aus der Authenticator-App. Einstellungen, Auswertungen und Zugänge bleiben bei dir.',
+  },
+  {
+    icon: MonitorSmartphone,
+    titel: 'Das Tablet am Tresen',
+    text: 'Einmal freigegeben, bleibt es angemeldet. Wer daran arbeitet, gibt die eigene PIN ein. Reservierungen, Bestellungen, Gutscheine und Arbeitszeiten laufen hier.',
+  },
+  {
+    icon: Smartphone,
+    titel: 'Das Handy deines Teams',
+    text: 'Per QR-Code gekoppelt, ohne Passwort. Dienstplan, Verfügbarkeit, Schichttausch und die eigenen Zeiten zum Nachschauen – mehr nicht.',
+  },
+]
+
+const SICHERHEIT: { icon: LucideIcon; titel: string; text: string }[] = [
+  { icon: Server, titel: 'Daten in Deutschland', text: 'Datenbank und Anwendung laufen in Frankfurt am Main.' },
+  { icon: KeyRound, titel: 'Zwei-Faktor-Anmeldung', text: 'Ohne Code aus der Authenticator-App kommt niemand in die Verwaltung.' },
+  { icon: History, titel: 'Änderungsprotokoll', text: 'Jede Änderung mit Name, Gerät und Uhrzeit – nachvollziehbar und nicht löschbar.' },
+  { icon: ShieldCheck, titel: 'Rechte je Person', text: 'Du legst fest, wer welches Werkzeug sieht. Entzogene Geräte sind sofort draußen.' },
+]
+
+const FRAGEN: { frage: string; antwort: string }[] = [
+  {
+    frage: 'Brauche ich Technikkenntnisse?',
+    antwort: 'Nein. Wir richten alles für dich ein, ziehen deine Domain um und zeigen dir und deinem Team in einer Einweisung, wie es funktioniert. Danach läuft alles im Browser – am Tablet, am Handy und am Computer.',
+  },
+  {
+    frage: 'Was passiert mit meiner bestehenden Website und Domain?',
+    antwort: 'Deine Domain bleibt deine. Wir verbinden sie mit Maestoso oder ziehen sie um, deine Gäste sehen weiter nur deine Adresse. Eine neue Domain können wir auch für dich anlegen.',
+  },
+  {
+    frage: 'Fallen Provisionen pro Bestellung oder Reservierung an?',
+    antwort: 'Nein. Du zahlst einen festen Monatspreis – egal wie viele Gäste reservieren oder bestellen und wie viele Mitarbeitende du hast.',
+  },
+  {
+    frage: 'Kann ich erst testen?',
+    antwort: `Ja, ${TESTPHASE_TAGE} Tage kostenlos. Danach entscheidest du in Ruhe, ob du weitermachst. Wenn nicht, löschen wir deine Daten vollständig.`,
+  },
+  {
+    frage: 'Wie lange läuft der Vertrag?',
+    antwort: `${MINDESTLAUFZEIT_MONATE} Monate, danach monatlich zum Monatsende kündbar. Bei jährlicher Zahlung wird es günstiger.`,
+  },
+  {
+    frage: 'Kann ich nur einzelne Module buchen?',
+    antwort: 'Ja. Die Pakete sind aber fast immer günstiger, weil sie die Module bündeln, die im Alltag zusammengehören.',
+  },
+]
+
+const ABLAUF = [
+  { titel: 'Demo', text: 'Wir zeigen dir Maestoso in 30 Minuten – online oder bei dir im Betrieb.' },
+  { titel: `${TESTPHASE_TAGE} Tage testen`, text: 'Kostenlos und ohne Risiko, mit deinen eigenen Tischen, Gerichten und Leuten.' },
+  { titel: 'Einrichtung', text: 'Wir übernehmen Domain, Website-Inhalte und Grundeinstellungen und weisen dein Team ein.' },
+  { titel: 'Loslegen', text: 'Gäste reservieren und bestellen bei dir, dein Team arbeitet mit einem System statt fünf.' },
+]
+
+export default function Startseite() {
+  return (
+    <div className="bg-m-creme font-sans text-m-tinte">
+      <Kopf />
+
+      <main>
+        {/* Einstieg: das Markenbild, darunter die Zusage in Textform */}
+        <section className="bg-m-nacht text-white">
+          <div className="relative mx-auto max-w-6xl">
+            <Image
+              src="/marke/banner.jpg"
+              alt="Maestoso – Gastronomie. Einfach. Digital."
+              width={1983}
+              height={793}
+              priority
+              sizes="(min-width: 1152px) 1152px, 100vw"
+              className="h-auto w-full"
+            />
+          </div>
+          <div className="mx-auto max-w-6xl px-4 pb-16 pt-8 sm:px-6 sm:pt-12">
+            <h1 className="max-w-3xl font-marke text-3xl font-semibold leading-tight text-balance sm:text-5xl">
+              Reservierungen, Personal, Bestellungen und Lager – <span className="text-m-gold">in einem System.</span>
+            </h1>
+            <p className="mt-5 max-w-2xl text-lg text-white/75">
+              Für Cafés, Restaurants und Bars, die ihre Zeit lieber den Gästen geben als fünf verschiedenen Programmen. Unter deiner eigenen Domain, ohne Provision und ohne Aufpreis pro Mitarbeiter.
+            </p>
+            <div className="mt-8 flex flex-wrap gap-3">
+              <Link href="#kontakt" className="rounded-full bg-m-gold px-6 py-3 font-semibold text-m-nacht transition hover:bg-m-gold-hell">
+                Demo anfragen
+              </Link>
+              <Link href="#funktionen" className="rounded-full border border-white/25 px-6 py-3 font-semibold text-white transition hover:border-white/60">
+                Funktionen ansehen
+              </Link>
+            </div>
+            <ul className="mt-10 flex flex-wrap gap-x-8 gap-y-2 text-sm text-white/60">
+              <li>0 % Provision auf Bestellungen</li>
+              <li>Kein Preis pro Mitarbeiter</li>
+              <li>Server in Frankfurt</li>
+              <li>{TESTPHASE_TAGE} Tage kostenlos testen</li>
+            </ul>
+          </div>
+        </section>
+
+        <section id="funktionen" className="scroll-mt-20 px-4 py-20 sm:px-6">
+          <div className="mx-auto max-w-6xl">
+            <p className="font-marke text-sm font-medium uppercase tracking-[0.16em] text-m-gold-dunkel">Funktionen</p>
+            <h2 className="mt-2 max-w-2xl font-marke text-3xl font-semibold text-balance sm:text-4xl">Alles, was dein Betrieb jeden Tag braucht</h2>
+            <p className="mt-4 max-w-2xl text-m-leise">Neun Werkzeuge, die zusammenarbeiten: Was ein Gast auf deiner Website bucht, sieht dein Team sofort am Tresen.</p>
+            <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {FUNKTIONEN.map((f) => (
+                <article key={f.name} className={`rounded-2xl border p-6 ${f.grundlage ? 'border-m-gold bg-white' : 'border-m-linie bg-white/70'}`}>
+                  <div className="flex items-center justify-between gap-3">
+                    <f.icon className="h-6 w-6 text-m-gold-dunkel" aria-hidden="true" />
+                    {f.grundlage && <span className="rounded-full bg-m-papier px-2.5 py-0.5 text-xs font-semibold text-m-gold-dunkel">Grundlage für alles</span>}
+                  </div>
+                  <h3 className="mt-4 font-marke text-lg font-semibold">{f.name}</h3>
+                  <p className="mt-2 text-[15px] leading-relaxed text-m-leise">{f.text}</p>
+                </article>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section id="ablauf" className="scroll-mt-20 bg-m-papier px-4 py-20 sm:px-6">
+          <div className="mx-auto max-w-6xl">
+            <p className="font-marke text-sm font-medium uppercase tracking-[0.16em] text-m-gold-dunkel">So arbeitest du</p>
+            <h2 className="mt-2 max-w-2xl font-marke text-3xl font-semibold text-balance sm:text-4xl">Ein System, drei Plätze – jeder sieht genau das Richtige</h2>
+            <div className="mt-10 grid gap-4 md:grid-cols-3">
+              {PLAETZE.map((p) => (
+                <article key={p.titel} className="rounded-2xl bg-white p-6">
+                  <p.icon className="h-7 w-7 text-m-gold-dunkel" aria-hidden="true" />
+                  <h3 className="mt-4 font-marke text-lg font-semibold">{p.titel}</h3>
+                  <p className="mt-2 text-[15px] leading-relaxed text-m-leise">{p.text}</p>
+                </article>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="bg-m-nacht px-4 py-20 text-white sm:px-6">
+          <div className="mx-auto grid max-w-6xl gap-12 md:grid-cols-2 md:items-center">
+            <div>
+              <p className="font-marke text-sm font-medium uppercase tracking-[0.16em] text-m-gold">Deine Gäste, deine Adresse</p>
+              <h2 className="mt-2 font-marke text-3xl font-semibold text-balance sm:text-4xl">Online bestellen ohne Provision</h2>
+              <p className="mt-4 text-white/75">
+                Gäste bestellen, reservieren und kaufen Gutscheine direkt auf deiner Website – nicht auf einem Portal, das bei jeder Bestellung mitverdient. Deine Gästedaten bleiben bei dir.
+              </p>
+            </div>
+            <div className="rounded-2xl border border-white/10 bg-m-nacht-2 p-6">
+              <p className="text-sm text-white/60">Beispiel: 3.000 € Bestellumsatz im Monat</p>
+              <dl className="mt-5 space-y-4">
+                <div className="flex items-baseline justify-between gap-4 border-b border-white/10 pb-4">
+                  <dt className="text-white/75">Lieferportal mit 13–30 % Provision</dt>
+                  <dd className="font-marke text-2xl font-semibold tabular-nums">390–900 €</dd>
+                </div>
+                <div className="flex items-baseline justify-between gap-4">
+                  <dt className="text-white/75">Maestoso</dt>
+                  <dd className="font-marke text-2xl font-semibold tabular-nums text-m-gold">0 € Provision</dd>
+                </div>
+              </dl>
+              <p className="mt-5 text-xs text-white/45">Provisionssätze großer Lieferportale laut öffentlich verfügbaren Angaben; Maestoso kostet einen festen Monatspreis.</p>
+            </div>
+          </div>
+        </section>
+
+        <section id="sicherheit" className="scroll-mt-20 px-4 py-20 sm:px-6">
+          <div className="mx-auto max-w-6xl">
+            <p className="font-marke text-sm font-medium uppercase tracking-[0.16em] text-m-gold-dunkel">Sicherheit & Datenschutz</p>
+            <h2 className="mt-2 max-w-2xl font-marke text-3xl font-semibold text-balance sm:text-4xl">Deine Daten bleiben deine Daten</h2>
+            <div className="mt-10 grid gap-x-8 gap-y-8 sm:grid-cols-2 lg:grid-cols-4">
+              {SICHERHEIT.map((s) => (
+                <div key={s.titel}>
+                  <s.icon className="h-6 w-6 text-m-gold-dunkel" aria-hidden="true" />
+                  <h3 className="mt-3 font-marke text-lg font-semibold">{s.titel}</h3>
+                  <p className="mt-1.5 text-[15px] leading-relaxed text-m-leise">{s.text}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="bg-m-papier px-4 py-20 sm:px-6">
+          <div className="mx-auto max-w-6xl">
+            <p className="font-marke text-sm font-medium uppercase tracking-[0.16em] text-m-gold-dunkel">Der Weg zu Maestoso</p>
+            <h2 className="mt-2 max-w-2xl font-marke text-3xl font-semibold text-balance sm:text-4xl">In vier Schritten startklar</h2>
+            <ol className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              {ABLAUF.map((a, i) => (
+                <li key={a.titel} className="rounded-2xl bg-white p-6">
+                  <span className="font-marke text-3xl font-semibold text-m-gold">{i + 1}</span>
+                  <h3 className="mt-2 font-marke text-lg font-semibold">{a.titel}</h3>
+                  <p className="mt-1.5 text-[15px] leading-relaxed text-m-leise">{a.text}</p>
+                </li>
+              ))}
+            </ol>
+            {PREISE_OEFFENTLICH && (
+              <p className="mt-8 text-m-leise">
+                Was das kostet, steht übersichtlich auf der{' '}
+                <Link href="/preise" className="font-semibold text-m-tinte underline">Preisseite</Link>.
+              </p>
+            )}
+          </div>
+        </section>
+
+        <section id="fragen" className="scroll-mt-20 px-4 py-20 sm:px-6">
+          <div className="mx-auto max-w-3xl">
+            <p className="font-marke text-sm font-medium uppercase tracking-[0.16em] text-m-gold-dunkel">Häufige Fragen</p>
+            <h2 className="mt-2 font-marke text-3xl font-semibold sm:text-4xl">Gut zu wissen</h2>
+            <div className="mt-8 divide-y divide-m-linie border-y border-m-linie">
+              {FRAGEN.map((f) => (
+                <details key={f.frage} className="group py-5">
+                  <summary className="flex cursor-pointer list-none items-center justify-between gap-4 font-marke text-lg font-medium">
+                    {f.frage}
+                    <span className="text-2xl leading-none text-m-gold-dunkel transition group-open:rotate-45" aria-hidden="true">+</span>
+                  </summary>
+                  <p className="mt-3 leading-relaxed text-m-leise">{f.antwort}</p>
+                </details>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section id="kontakt" className="scroll-mt-20 bg-m-papier px-4 py-20 sm:px-6">
+          <div className="mx-auto grid max-w-6xl gap-10 lg:grid-cols-[1fr_1.4fr]">
+            <div>
+              <p className="font-marke text-sm font-medium uppercase tracking-[0.16em] text-m-gold-dunkel">Kontakt</p>
+              <h2 className="mt-2 font-marke text-3xl font-semibold text-balance sm:text-4xl">Lass uns über deinen Betrieb sprechen</h2>
+              <p className="mt-4 text-m-leise">
+                Sag uns kurz, wann es dir passt – wir melden uns und zeigen dir Maestoso an deinem Beispiel. Fragen beantworten wir gern auch vorab.
+              </p>
+            </div>
+            <KontaktFormular />
+          </div>
+        </section>
+      </main>
+
+      <Fuss />
+    </div>
+  )
 }

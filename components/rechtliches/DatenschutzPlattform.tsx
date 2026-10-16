@@ -25,6 +25,23 @@ export default function DatenschutzPlattform() {
         </p>
       </Abschnitt>
 
+      <Abschnitt titel="Website und Kontaktformular">
+        <p>
+          Beim Aufruf unserer Website verarbeitet unser Hosting-Dienstleister technisch notwendige Daten (z. B.
+          IP-Adresse, Zeitpunkt, aufgerufene Seite), um die Seite auszuliefern und vor Angriffen zu schützen. Tracking,
+          Analyse- oder Werbedienste setzen wir nicht ein.
+        </p>
+        <p>
+          Wenn du uns über das Kontaktformular schreibst oder einen Demo-Termin anfragst, verarbeiten wir die Angaben
+          aus dem Formular (Name, Betrieb, E-Mail-Adresse, optional Telefonnummer, Wunschtermin und Nachricht), um
+          deine Anfrage zu beantworten und den Termin abzustimmen. Zum Schutz vor Spam zählen wir kurzzeitig Anfragen
+          je IP-Adresse. Rechtsgrundlage sind vorvertragliche Maßnahmen auf deine Anfrage hin (Art. 6 Abs. 1 lit. b
+          DSGVO) bzw. unser berechtigtes Interesse an der Beantwortung von Anfragen (Art. 6 Abs. 1 lit. f DSGVO). Wir
+          löschen die Angaben, sobald die Anfrage erledigt ist, spätestens zwölf Monate nach dem letzten Kontakt –
+          außer daraus wird ein Vertrag.
+        </p>
+      </Abschnitt>
+
       <Abschnitt titel="Hosting und Dienstleister">
         <p>Für den Betrieb der Plattform setzen wir folgende Dienstleister als Auftragsverarbeiter ein:</p>
         <Dienstleisterliste />

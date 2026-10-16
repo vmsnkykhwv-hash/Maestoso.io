@@ -35,8 +35,8 @@ export default function Sidebar({ organisationName, nutzer }: { organisationName
   return (
     <nav className="flex h-full w-64 flex-none flex-col gap-7 bg-sidebar px-4 py-7 text-sidebar-foreground">
       <Link href="/dashboard" className="flex items-center gap-2.5 px-2">
-        <Logo className="h-6 w-6 flex-none text-accent" />
-        <span className="font-display text-xl font-semibold">Maestoso</span>
+        <Logo className="h-6 w-7 flex-none" />
+        <span className="font-marke text-xl font-bold tracking-tight">Maestoso</span>
       </Link>
 
       <ul className="flex flex-1 flex-col gap-1 overflow-y-auto">

@@ -18,6 +18,25 @@ keine aktive Marke in Software-relevanten Klassen). Plattform-Domain:
 Weiterleitung für Tippfehler ohne Bindestrich. `maestoso.de` gehört einem
 Domainhändler, `maestoso.io` hätte ein Vielfaches gekostet.
 
+## Website maestoso-gastro.de
+
+- Startseite `app/page.tsx` (nur auf der Plattform-Domain – Betriebsdomains
+  schreibt `proxy.ts` vorher auf deren Website um), Bausteine in
+  `components/marketing/`. Preisseite `app/preise/page.tsx`, versteckt bis
+  `PREISE_OEFFENTLICH` in `lib/preise.ts` auf `true` steht.
+- Kontakt-/Demo-Formular → Server Action `app/anfrage-actions.ts`: Spamschutz
+  (unsichtbares Feld, Mindest-Ausfüllzeit, Rate-Limit je IP), Speicherung in
+  `anfragen` (Migration `0028`), Mail an alle Plattform-Admins mit
+  Reply-To auf die anfragende Person. Liste mit Status und Notiz unter
+  `/plattform-admin/anfragen`.
+- Logo: das „M“ als Vektor in `lib/markeZeichen.ts` (aus dem Markenbanner
+  nachgezeichnet), genutzt von `components/Logo.tsx`, `app/icon.svg`,
+  `app/apple-icon.tsx`; Banner und Link-Vorschaubild in `public/marke/`.
+  Schriftzug in Outfit (`font-marke`).
+- Suchmaschinen: `noindex` und `robots.txt`-Sperre der Website, solange
+  `lib/rechtliches/plattform.ts` Platzhalter enthält
+  (`RECHTSTEXTE_VOLLSTAENDIG`).
+
 ## Zugänge & Rollen
 
 - **Plattform-Admin** (du): unter `<plattform-domain>/login` mit E-Mail,
@@ -549,27 +568,30 @@ Zwei Ebenen, weil die Verantwortung unterschiedlich verteilt ist:
 
 ## Preismodell
 
-Noch nicht im Code abgebildet (keine Abrechnungslogik, keine Preisseite) –
-hier nur die Entscheidung aus den Preisgesprächen festgehalten, damit sie
-nicht wieder neu verhandelt werden muss, wenn Abrechnung/Preisseite gebaut
-werden.
+Stand 16.10.2026, Quelle der Zahlen für die Website: `lib/preise.ts`
+(dort ändern, nicht hier). Die Preisseite `/preise` bleibt per
+`PREISE_OEFFENTLICH` versteckt, bis die Preise freigegeben sind; die
+Startseite nennt bewusst keine Preise.
 
 **Ausgangslage:** Ziel ist Profitabilität schon ab 3–5 Kunden, nicht erst
 ab Dutzenden. Laufende Infrastrukturkosten liegen bei ca. 42–60 €/Monat
 (Supabase Pro ~23 €, Vercel Pro ~18 € – Hobby-Tier ist nur für private
 Nutzung zulässig, Resend bis 3.000 Mails/Monat kostenlos, danach ~18 €).
-Ein vergleichbarer Funktionsumfang bei der Konkurrenz (z. B. gastronovi:
-Tischreservierung + Bestellsystem + Kasse + Kassenbuch + Kalkulation +
-Einkauf einzeln lizenziert) kostet in Summe grob 250–350 €/Monat.
+Vergleich (Recherche 10/2026, Richtwerte): Website-Baukasten 11–45 €,
+Reservierung resmio Premium 69,90 € / DISH ab 54 €, Dienstplan +
+Zeiterfassung Papershift 4–9 € pro Mitarbeiter, Lieferportale 13–30 %
+Provision pro Bestellung – ein typisches Café zahlt für den Plus-Umfang
+einzeln ~150 € plus Provision.
 
-### Drei Stufen
+### Drei Stufen (netto, je Betrieb und Monat)
 
 | | Basic | Plus | Full |
 |---|---|---|---|
-| **Preis** | 49 €/Monat | 109 €/Monat | 149 €/Monat |
-| Zeiterfassung | ✓ | ✓ | ✓ |
-| Tischplan & Reservierungen | ✓ | ✓ | ✓ |
+| **Preis** | 49 € | 109 € | 149 € |
+| **Einrichtung einmalig** | 329 € | 479 € | 689 € |
 | Website | ✓ | ✓ | ✓ |
+| Tischplan & Reservierungen | ✓ | ✓ | ✓ |
+| Zeiterfassung | ✓ | ✓ | ✓ |
 | Dienstplan | | ✓ | ✓ |
 | Online-Bestellung | | ✓ | ✓ |
 | Google-Bewertungsanfrage | | ✓ | ✓ |
@@ -577,21 +599,34 @@ Einkauf einzeln lizenziert) kostet in Summe grob 250–350 €/Monat.
 | Gutschein-Verkauf | | | ✓ |
 | Veranstaltungsplanung | | | ✓ |
 
-Erzählstruktur der Staffelung: Basic = online sichtbar + buchbar, Plus =
-aktiv Umsatz machen + Personal koordinieren, Full = komplettes Backoffice
-inkl. Sonderanlässe. Jede Stufe baut auf der vorigen auf, kein Modul taucht
-isoliert in einer höheren Stufe auf, ohne in der vorigen enthalten zu sein.
+Website steht überall zuerst – sie ist die Grundlage für alles, was Gäste
+tun (reservieren, bestellen, Gutscheine kaufen). Erzählstruktur: Basic =
+online sichtbar + buchbar, Plus = aktiv Umsatz machen + Personal
+koordinieren, Full = komplettes Backoffice inkl. Sonderanlässe.
 
-### Einzelpreise (Module einzeln buchbar, für Kunden ohne Bundle)
+### Einzelpreise (je Monat)
 
-Zeiterfassung 19 € · Tischplan 35 € · Website 16 € · Dienstplan 22 € ·
-**Online-Bestellung 59 €** · Bewertungsanfrage 16 € · Lagerbestand 25 € ·
-Gutschein-Verkauf 19 € · Veranstaltungsplanung 32 €
+Website 19 € · Tischplan 39 € · Zeiterfassung 22 € · Dienstplan 25 € ·
+**Online-Bestellung 65 €** · Bewertungsanfrage 19 € · Lagerbestand 29 € ·
+Gutschein-Verkauf 22 € · Veranstaltungsplanung 35 € – Summe 275 €.
+Bewusst leicht angehoben, damit die Pakete deutlich günstiger wirken:
+Basic spart 39 %, Plus 42 %, Full 46 % gegenüber den Einzelpreisen.
+Einrichtung je Einzelmodul 129 €.
 
-Summe aller neun Module einzeln: 243 € – bewusst über dem Full-Preis
-(149 €), damit das Bundle immer der günstigere Weg bleibt (ca. 30–40 %
-Bundle-Rabatt), aber weiterhin klar unter der Konkurrenz-Summe von
-250–350 €.
+### Konditionen
+
+- Einrichtung kalkuliert mit 60 €/Std. (Basic ~5,5 Std., Plus ~8 Std.,
+  Full ~11,5 Std.), inklusive Domain-Umzug, Website-Inhalten,
+  Grundeinstellungen und Einweisung.
+- Jahreszahlung: 10 % auf die Monatspreise und 25 % auf die Einrichtung.
+- Laufzeit 12 Monate, danach monatlich zum Monatsende kündbar.
+- 30 Tage kostenlos testen; danach automatische Sperre, nach weiteren
+  30 Tagen ohne Entscheidung Löschung aller Zugänge und Daten (noch zu
+  bauen, siehe "Nächste Schritte").
+- Netto-Preise. Umsatzsteuer-Hinweis per `KLEINUNTERNEHMER` in
+  `lib/preise.ts` umschaltbar (Kleinunternehmer nach § 19 UStG dürfen
+  keine USt. ausweisen) – mit dem Steuerberater klären.
+- Kein Gründerkunden-Rabatt.
 
 ### Online-Bestellung ist bewusst der Ausreißer nach oben
 
@@ -679,7 +714,7 @@ Veranstaltungen, `0022` rechtliche Angaben, `0023` `custom_domain_aktiv`,
 `0024` Konten (Passwort + 2FA), `0025` Geräte, Kopplungscodes und
 Tool-Freischaltung je Mitarbeiter*in, `0026` das
 Änderungsprotokoll, `0027` Admin-Eingriffe darin als „Maestoso-Support“
-(siehe "Zugänge & Rollen").
+(siehe "Zugänge & Rollen"), `0028` Anfragen von der Website.
 
 Ohne Supabase-CLI (z. B. vom iPad): `supabase/komplett.sql` enthält alle
 Migrationen als eine Transaktion – auf GitHub öffnen, „Copy raw file“, im

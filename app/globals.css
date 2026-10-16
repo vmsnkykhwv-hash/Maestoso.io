@@ -72,6 +72,17 @@
   --color-sidebar-foreground: var(--sidebar-foreground);
   --font-sans: var(--font-manrope);
   --font-display: var(--font-fraunces);
+  --font-marke: var(--font-outfit);
+  --color-m-nacht: #121110;
+  --color-m-nacht-2: #1d1a17;
+  --color-m-gold: #d8b083;
+  --color-m-gold-hell: #f2e0c6;
+  --color-m-gold-dunkel: #a1734a;
+  --color-m-creme: #faf7f0;
+  --color-m-papier: #f2ebdf;
+  --color-m-tinte: #1d1a17;
+  --color-m-leise: #6e665a;
+  --color-m-linie: #e3d9c7;
 }
 
 html,
