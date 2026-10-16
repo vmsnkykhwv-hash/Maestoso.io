@@ -61,9 +61,12 @@ export async function veranstaltungAnlegenAktion(input: {
   return mitProtokoll(veranstaltungAnlegen(organisationId, input), 'veranstaltung', 'Veranstaltung angelegt', `${input.titel}, ${input.datum}`, null)
 }
 
-export async function veranstaltungBestaetigenAktion(id: string): Promise<{ fehler?: string }> {
+export async function veranstaltungBestaetigenAktion(id: string, trotzReservierungen = false): Promise<{ fehler?: string; rueckfrage?: string }> {
   const organisationId = await organisationIdOderFehler()
-  return mitProtokoll(veranstaltungBestaetigen(organisationId, id), 'veranstaltung', 'Veranstaltung bestätigt', null, id)
+  const ergebnis = await veranstaltungBestaetigen(organisationId, id, trotzReservierungen)
+  // Eine Rückfrage ist noch keine Zusage – erst die bestätigte Antwort kommt ins Protokoll.
+  if (ergebnis.rueckfrage) return ergebnis
+  return mitProtokoll(ergebnis, 'veranstaltung', 'Veranstaltung bestätigt', trotzReservierungen ? 'trotz bestehender Reservierungen' : null, id)
 }
 
 export async function veranstaltungAbsagenAktion(id: string): Promise<{ fehler?: string }> {

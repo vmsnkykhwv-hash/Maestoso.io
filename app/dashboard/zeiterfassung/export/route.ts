@@ -6,9 +6,9 @@ import { darfModul } from '@/lib/zugriff'
 import { arbeitsminuten } from '@/lib/zeiterfassung/zeit'
 import { EINTRAG_ART_LABEL, type EintragArt } from '@/lib/zeiterfassung/types'
 
-const SPALTEN_BREITE = [{ wch: 20 }, { wch: 12 }, { wch: 10 }, { wch: 8 }, { wch: 8 }, { wch: 11 }, { wch: 9 }, { wch: 28 }]
+const SPALTEN_BREITE = [{ wch: 20 }, { wch: 12 }, { wch: 10 }, { wch: 8 }, { wch: 8 }, { wch: 11 }, { wch: 9 }, { wch: 28 }, { wch: 12 }]
 
-function zeileAusEintrag(e: Record<string, unknown>, mitarbeiterName: string): (string | number)[] {
+function zeileAusEintrag(e: Record<string, unknown>, mitarbeiterName: string, geaendert: Set<string>): (string | number)[] {
   const beginn = e.beginn as string | null
   const ende = e.ende as string | null
   const minuten = beginn && ende ? arbeitsminuten(beginn, ende, e.pause_minuten as number) : 0
@@ -22,7 +22,21 @@ function zeileAusEintrag(e: Record<string, unknown>, mitarbeiterName: string): (
     e.pause_minuten as number,
     Math.round((minuten / 60) * 100) / 100,
     (e.notiz as string | null) ?? '',
+    geaendert.has(e.id as string) ? 'ja' : '',
   ]
+}
+
+// Für Steuerberater und Prüfung: welche Einträge nach dem Anlegen noch
+// geändert wurden (Details stehen in der Historie, Migration 0031).
+async function geaenderteEintraege(organisationId: string, ids: string[]): Promise<Set<string>> {
+  if (ids.length === 0) return new Set()
+  const { data } = await getServiceClient()
+    .from('zeiteintrag_historie')
+    .select('zeiteintrag_id')
+    .eq('organisation_id', organisationId)
+    .eq('aktion', 'geaendert')
+    .in('zeiteintrag_id', ids)
+  return new Set((data ?? []).map((h) => h.zeiteintrag_id as string))
 }
 
 // Excel erlaubt in Blattnamen weder : \ / ? * [ ] noch mehr als 31 Zeichen.
@@ -60,15 +74,17 @@ export async function GET(request: NextRequest) {
     for (const m of mitarbeiterListe ?? []) {
       const { data: eintraege } = await supabase
         .from('zeiteintraege')
-        .select('arbeitstag, art, beginn, ende, pause_minuten, notiz')
+        .select('id, arbeitstag, art, beginn, ende, pause_minuten, notiz')
         .eq('mitarbeiter_id', m.id)
+        .eq('organisation_id', sitzung.organisationId)
         .gte('arbeitstag', von)
         .lte('arbeitstag', bis)
         .order('arbeitstag')
 
       const name = m.name as string
-      const zeilen: (string | number)[][] = [['Mitarbeiter', 'Datum', 'Typ', 'Beginn', 'Ende', 'Pause (Min.)', 'Stunden', 'Notiz']]
-      for (const e of eintraege ?? []) zeilen.push(zeileAusEintrag(e, name))
+      const zeilen: (string | number)[][] = [['Mitarbeiter', 'Datum', 'Typ', 'Beginn', 'Ende', 'Pause (Min.)', 'Stunden', 'Notiz', 'Nachträglich geändert']]
+      const geaendert = await geaenderteEintraege(sitzung.organisationId, (eintraege ?? []).map((e) => e.id as string))
+      for (const e of eintraege ?? []) zeilen.push(zeileAusEintrag(e, name, geaendert))
 
       const blatt = XLSX.utils.aoa_to_sheet(zeilen)
       blatt['!cols'] = SPALTEN_BREITE
@@ -99,7 +115,7 @@ export async function GET(request: NextRequest) {
     supabase.from('mitarbeiter').select('id, name').in('id', erlaubteIds).eq('organisation_id', sitzung.organisationId),
     supabase
       .from('zeiteintraege')
-      .select('mitarbeiter_id, arbeitstag, art, beginn, ende, pause_minuten, notiz')
+      .select('id, mitarbeiter_id, arbeitstag, art, beginn, ende, pause_minuten, notiz')
       .in('mitarbeiter_id', erlaubteIds)
       .eq('organisation_id', sitzung.organisationId)
       .gte('arbeitstag', von)
@@ -110,9 +126,10 @@ export async function GET(request: NextRequest) {
   const nameNachId = new Map((mitarbeiterListe ?? []).map((m) => [m.id as string, m.name as string]))
 
   const zeilen: (string | number)[][] = [
-    ['Mitarbeiter', 'Datum', 'Typ', 'Beginn', 'Ende', 'Pause (Min.)', 'Stunden', 'Notiz'],
+    ['Mitarbeiter', 'Datum', 'Typ', 'Beginn', 'Ende', 'Pause (Min.)', 'Stunden', 'Notiz', 'Nachträglich geändert'],
   ]
-  for (const e of eintraege ?? []) zeilen.push(zeileAusEintrag(e, nameNachId.get(e.mitarbeiter_id as string) ?? ''))
+  const geaendert = await geaenderteEintraege(sitzung.organisationId, (eintraege ?? []).map((e) => e.id as string))
+  for (const e of eintraege ?? []) zeilen.push(zeileAusEintrag(e, nameNachId.get(e.mitarbeiter_id as string) ?? '', geaendert))
 
   const blatt = XLSX.utils.aoa_to_sheet(zeilen)
   blatt['!cols'] = SPALTEN_BREITE

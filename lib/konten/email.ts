@@ -2,6 +2,7 @@
 // ohne RESEND_API_KEY wird nur geloggt. Die Links zeigt der Admin bzw. die
 // Inhaberin zusätzlich zum Kopieren an, damit es auch ohne Mailversand geht.
 import { Resend } from 'resend'
+import { mailPruefen } from '@/lib/mailPruefen'
 import { escapeHtml } from '@/lib/htmlEscape'
 
 function client(): Resend | null {
@@ -20,7 +21,7 @@ async function senden(an: string, betreff: string, html: string): Promise<boolea
     return false
   }
   try {
-    await resend.emails.send({ from: absender(), to: an, subject: betreff, html })
+    mailPruefen(await resend.emails.send({ from: absender(), to: an, subject: betreff, html }))
     return true
   } catch (e) {
     console.error('Mailversand fehlgeschlagen', e)

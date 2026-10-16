@@ -44,7 +44,7 @@ function periodeFuer(typ: MitarbeiterTyp, anker: string): { von: string; bis: st
   return { von, bis, label: `${formatDatumKurz(von)} – ${formatDatumKurz(bis)}` }
 }
 
-function ZeitenAnsicht({ ziel, nurLesen = false }: { ziel: Mitarbeiter; nurLesen?: boolean }) {
+function ZeitenAnsicht({ ziel, nurLesen = false, selbst = false }: { ziel: Mitarbeiter; nurLesen?: boolean; selbst?: boolean }) {
   const [anker, setAnker] = useState(heuteBerlin())
   const [eintraege, setEintraege] = useState<Zeiteintrag[]>([])
   const [minuten, setMinuten] = useState(0)
@@ -115,6 +115,7 @@ function ZeitenAnsicht({ ziel, nurLesen = false }: { ziel: Mitarbeiter; nurLesen
           anfangsEintraege={eintraege}
           onMinutenGeaendert={setMinuten}
           nurLesen={nurLesen}
+          selbstAb={selbst ? datumPlusTage(heuteBerlin(), -1) : undefined}
         />
       )}
     </div>
@@ -527,7 +528,7 @@ export default function ZeiterfassungApp({
           </p>
         )}
 
-        {ansicht === 'meine-zeiten' && mitarbeiter && <ZeitenAnsicht ziel={mitarbeiter} nurLesen={nurLesen} />}
+        {ansicht === 'meine-zeiten' && mitarbeiter && <ZeitenAnsicht ziel={mitarbeiter} nurLesen={nurLesen} selbst />}
         {ansicht === 'alle-zeiten' && verwaltung && <AlleZeitenAnsicht mitarbeiterListe={mitarbeiterListe ?? []} />}
         {ansicht === 'mitarbeiter' && verwaltung && (
           <MitarbeiterVerwaltung liste={mitarbeiterListe ?? []} onListeAendern={setMitarbeiterListe} />

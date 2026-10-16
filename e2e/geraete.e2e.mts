@@ -1,5 +1,7 @@
 import { chromium, type Page } from 'playwright'
+import { createClient } from '@supabase/supabase-js'
 import { aktuellerCode } from '../lib/konten/totp'
+import { formatDatumKurz, heuteBerlin } from '../lib/datum'
 
 const PORT = 3200, CAFE = `http://cafe-test.maestoso.test:${PORT}`, ADMIN = `http://maestoso.test:${PORT}`
 const ok = (b: boolean, t: string) => { console.log(b ? '✓' : '✗', t); if (!b) process.exitCode = 1 }
@@ -91,6 +93,30 @@ await tablet.goto(`${CAFE}/dashboard/zeiterfassung`)
 ok(await sichtbar(tablet, 'Meine Zeiten') && !(await tablet.getByRole('button', { name: 'Alle Zeiten' }).isVisible()), 'Zeiterfassung am Tresen: nur eigene Zeiten')
 ok(await tablet.locator('fieldset:not([disabled])').first().waitFor({ timeout: 8000 }).then(() => true, () => false), 'Zeiten am Tresen bearbeitbar')
 
+// Arbeitszeiten revisionssicher: Original bleibt in der Historie, ältere Tage nur durch die Leitung
+const db = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+const heute = tablet.locator('fieldset fieldset').filter({ hasText: formatDatumKurz(heuteBerlin()) })
+await heute.locator('input[type="time"]').nth(0).fill('09:00')
+await heute.locator('input[type="time"]').nth(1).fill('17:00')
+await heute.getByRole('button', { name: 'Speichern' }).click()
+await heute.getByRole('button', { name: /Speicher/ }).waitFor({ state: 'detached', timeout: 8000 })
+await heute.locator('input[type="time"]').nth(1).fill('16:00')
+await heute.getByRole('button', { name: 'Speichern' }).click()
+ok(await sichtbar(tablet, 'Nachträglich geändert'), 'Geänderter Eintrag ist als nachträglich geändert markiert')
+const { data: historie } = await db.from('zeiteintrag_historie').select('aktion, alt, neu, geaendert_von').order('zeitpunkt')
+const aenderung = historie?.find((h) => h.aktion === 'geaendert')
+ok(historie?.[0]?.aktion === 'angelegt' && aenderung?.alt?.ende?.startsWith('17:00') && aenderung?.neu?.ende?.startsWith('16:00') && String(aenderung?.geaendert_von).includes('Mara'),
+  'Historie hält Original (17:00) und Änderung (16:00) mit Mara als Urheberin fest')
+const { error: loeschFehler } = await db.from('zeiteintrag_historie').delete().eq('aktion', 'angelegt')
+const { error: aenderFehler } = await db.from('zeiteintrag_historie').update({ geaendert_von: 'jemand' }).eq('aktion', 'angelegt')
+ok(!!loeschFehler && !!aenderFehler, 'Historie lässt sich nicht löschen oder ändern')
+await tablet.getByRole('button', { name: '←' }).click()
+await tablet.locator('fieldset fieldset').first().waitFor({ timeout: 8000 })
+const zeilenVorwoche = tablet.locator('fieldset fieldset')
+const gesperrt = await zeilenVorwoche.evaluateAll((els) => els.length > 0 && els.every((e) => (e as HTMLFieldSetElement).disabled))
+ok(gesperrt && (await tablet.getByText('Ältere Tage korrigiert die Leitung').isVisible()), 'Vorwoche am Tresen gesperrt, Hinweis auf die Leitung')
+await tablet.getByRole('button', { name: '→' }).click()
+
 // Inhaberin (eigenes Handy/Rechner) entzieht Tischplan für Mara und koppelt ihr Handy
 const inhaber = await (await browser.newContext()).newPage()
 await new Promise(r => setTimeout(r, 31000)) // neuer 30-s-Schritt (Replay-Schutz)
@@ -156,4 +182,9 @@ ok(/Maestoso-Support \(admin@musterbetrieb\.de\) · Verwaltungskonto eingeladen/
 const fs = await import('node:fs')
 const log = fs.readFileSync(process.env.E2E_NEXT_LOG ?? 'e2e/next.log', 'utf8')
 ok(log.includes('Mail "Sicherheitshinweis: Änderung an den Zugängen von Café Test" übersprungen'), 'Sicherheitshinweis-Mail an die Inhaberin ausgelöst (ohne Resend nur geloggt)')
+
+// Betrieb mit Arbeitszeiten löschen: die Historie darf die Löschung nicht blockieren
+const { error: orgFehler } = await db.from('organisationen').delete().eq('name', 'Café Test')
+const { count: rest } = await db.from('zeiteintrag_historie').select('id', { count: 'exact', head: true })
+ok(!orgFehler && rest === 0, `Betrieb samt Arbeitszeiten und Historie löschbar${orgFehler ? ` (${orgFehler.message})` : ''}`)
 await browser.close()

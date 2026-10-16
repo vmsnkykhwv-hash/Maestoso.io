@@ -142,6 +142,35 @@ export async function veranstaltungStatusAendern(
   return {}
 }
 
+// Bedingter Statuswechsel (claim): nur wer den Status tatsächlich ändert,
+// legt danach Blockierung und Mail an – ein Doppelklick erzeugt sonst zwei
+// Blockierungen und zwei Mails. Gibt den bisherigen Status zurück, null wenn
+// nichts zu ändern war.
+export async function veranstaltungStatusBeanspruchen(
+  id: string,
+  organisationId: string,
+  von: VeranstaltungStatus[],
+  nach: VeranstaltungStatus
+): Promise<VeranstaltungStatus | null> {
+  const supabase = getServiceClient()
+  const { data: bisher } = await supabase
+    .from('veranstaltungen')
+    .select('status')
+    .eq('id', id)
+    .eq('organisation_id', organisationId)
+    .maybeSingle()
+  const alt = bisher?.status as VeranstaltungStatus | undefined
+  if (!alt || !von.includes(alt)) return null
+  const { data } = await supabase
+    .from('veranstaltungen')
+    .update({ status: nach })
+    .eq('id', id)
+    .eq('organisation_id', organisationId)
+    .eq('status', alt)
+    .select('id')
+  return data && data.length > 0 ? alt : null
+}
+
 export async function veranstaltungBlockierungIdSetzen(
   id: string,
   organisationId: string,

@@ -21,7 +21,9 @@ import {
   tischAktualisieren,
   tischErstellen,
   tischLoeschen,
+  reservierungErinnerungAbholen,
 } from '@/lib/tischplan/daten'
+import { erinnerungStornieren } from '@/lib/tischplan/email'
 import { pruefeBuchung } from '@/lib/tischplan/regeln'
 import { berechneAuslastung, type TischplanAuswertung } from '@/lib/tischplan/auswertung'
 import type { Blockierung, Einstellungen, Reservierung, ReservierungAusnahme, ReservierungStatus, Tisch } from '@/lib/tischplan/types'
@@ -122,6 +124,10 @@ export async function reservierungStatusAendernAktion(id: string, status: Reserv
   // der Status danach wieder weg, wird eine bereits geplante Mail storniert.
   if (status === 'erschienen') await bewertungsanfragePlanen(organisationId, id)
   else await bewertungsanfrageStornierenFuerReservierung(id)
+  if (status === 'storniert' || status === 'nicht_erschienen') {
+    const erinnerung = await reservierungErinnerungAbholen(id, organisationId)
+    if (erinnerung) await erinnerungStornieren(erinnerung)
+  }
 
   await protokollieren('tischplan', 'Reservierung: Status geändert', RESERVIERUNG_STATUS_LABEL[status], id)
   return {}

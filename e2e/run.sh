@@ -51,7 +51,7 @@ NEXT_PID=$!
 for _ in $(seq 1 30); do curl -s -o /dev/null -H "Host: maestoso.test" http://127.0.0.1:3200/login && break; sleep 1; done
 
 status=0
-for t in e2e/*.e2e.mts; do
+for t in ${E2E_NUR:-e2e/*.e2e.mts}; do
   echo "== $t"
   $PSQL -c "truncate organisationen, plattform_admins, login_versuche cascade"
   npx tsx "$t" || status=1

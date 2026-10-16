@@ -16,6 +16,18 @@ export type Zeiteintrag = {
   ende: string | null
   pauseMinuten: number
   notiz: string | null
+  // Nach dem Anlegen noch einmal geändert – dann gibt es einen Verlauf.
+  geaendert?: boolean
+}
+
+export type ZeitStand = { arbeitstag: string; art: EintragArt; beginn: string | null; ende: string | null; pause_minuten: number; notiz: string | null }
+
+export type ZeitHistorie = {
+  aktion: 'angelegt' | 'geaendert' | 'geloescht'
+  alt: ZeitStand | null
+  neu: ZeitStand | null
+  geaendertVon: string | null
+  zeitpunkt: string
 }
 
 // Ablage von Arbeitsverträgen & Co. pro Mitarbeiter, siehe lib/zeiterfassung/dokumente.ts.

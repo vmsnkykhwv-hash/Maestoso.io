@@ -491,3 +491,15 @@ export async function eintraegeAlsBestelltMarkierenFuerOrganisation(organisation
 
   return (data ?? []).map((e) => e.id as string)
 }
+
+// Gegenstück zum Beanspruchen: ging die Mail nicht raus (oder nur ein Teil
+// ließ sich beanspruchen), müssen die Positionen wieder offen sein – sonst
+// verschwinden sie aus der Bestellliste, ohne je bestellt worden zu sein.
+export async function eintraegeBestelltZuruecksetzenFuerOrganisation(organisationId: string, ids: string[]): Promise<void> {
+  if (ids.length === 0) return
+  const supabase = getServiceClient()
+  const { data: pruefungen } = await supabase.from('bestandspruefungen').select('id').eq('organisation_id', organisationId)
+  const pruefungIds = (pruefungen ?? []).map((p) => p.id as string)
+  if (pruefungIds.length === 0) return
+  await supabase.from('bestandspruefung_eintraege').update({ bestellt: false }).in('id', ids).in('bestandspruefung_id', pruefungIds)
+}

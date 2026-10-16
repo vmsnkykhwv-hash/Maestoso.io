@@ -6,25 +6,48 @@ import { ladeMitarbeiter, ladeMitarbeiterListe, MITARBEITER_SPALTEN, mitarbeiter
 import { MITARBEITER_PIN, pinFehler } from '@/lib/pinRegeln'
 import { aktionFuer, verwaltungFuer } from '@/lib/zugriff'
 import type { Mitarbeiter, MitarbeiterRolle, MitarbeiterTyp } from '@/lib/mitarbeiter/types'
-import { ladeZeiteintraege } from '@/lib/zeiterfassung/daten'
+import { ladeZeiteintraege, ladeZeitHistorie } from '@/lib/zeiterfassung/daten'
 import { dokumentHochladen, dokumentLoeschen, ladeDokumenteFuerMitarbeiter } from '@/lib/zeiterfassung/dokumente'
-import type { EintragArt, MitarbeiterDokument, Zeiteintrag } from '@/lib/zeiterfassung/types'
-import { mitProtokoll, protokollieren } from '@/lib/protokoll'
+import type { EintragArt, MitarbeiterDokument, ZeitHistorie, Zeiteintrag } from '@/lib/zeiterfassung/types'
+import { aktuellerAkteur, mitProtokoll, protokollieren } from '@/lib/protokoll'
+import { datumPlusTage, heuteBerlin } from '@/lib/datum'
 
 // Eigene Zeiten: ansehen auch vom gekoppelten Handy, erfassen/ändern nur am
 // Tresen-Gerät (damit niemand von zu Hause aus stempelt). Das
 // Verwaltungskonto darf die Zeiten aller Mitarbeitenden des Betriebs sehen
 // und korrigieren.
-async function zugriffAufZeiten(mitarbeiterId: string, schreiben: boolean): Promise<string> {
+async function zugriffAufZeiten(mitarbeiterId: string, schreiben: boolean): Promise<{ organisationId: string; verwaltung: boolean }> {
   const sitzung = await aktionFuer('zeiterfassung', schreiben ? { ohneHandy: true } : {})
   if (sitzung.art === 'inhaber') {
     // Die ID kommt vom Client – ohne diese Prüfung ließe sich ein Eintrag
     // für eine Person eines fremden Betriebs anlegen.
     if (!(await ladeMitarbeiter(mitarbeiterId, sitzung.organisationId))) throw new Error('Mitarbeiter nicht gefunden')
-    return sitzung.organisationId
+    return { organisationId: sitzung.organisationId, verwaltung: true }
   }
   if (sitzung.mitarbeiter?.id !== mitarbeiterId) throw new Error('Keine Berechtigung')
-  return sitzung.organisationId
+  return { organisationId: sitzung.organisationId, verwaltung: false }
+}
+
+// Mitarbeitende tragen am Tresen heute und gestern selbst ein (Spätschicht
+// wird oft erst am nächsten Tag nachgetragen). Ältere Tage korrigiert nur
+// das Verwaltungskonto – sonst ließe sich eine längst abgerechnete Woche
+// nachträglich schönrechnen. Jede Änderung steht zusätzlich mit altem und
+// neuem Wert in zeiteintrag_historie (Migration 0031).
+const NUR_LEITUNG = 'Ältere Tage kann nur die Leitung korrigieren. Sag ihr kurz Bescheid.'
+
+function selbstBearbeitbar(arbeitstag: string): boolean {
+  return arbeitstag >= datumPlusTage(heuteBerlin(), -1)
+}
+
+async function bestehenderArbeitstag(id: string, organisationId: string, mitarbeiterId: string): Promise<string | null> {
+  const { data } = await getServiceClient()
+    .from('zeiteintraege')
+    .select('arbeitstag')
+    .eq('id', id)
+    .eq('organisation_id', organisationId)
+    .eq('mitarbeiter_id', mitarbeiterId)
+    .maybeSingle()
+  return (data?.arbeitstag as string | undefined) ?? null
 }
 
 function istGrenzFehler(message: string | undefined): string | undefined {
@@ -35,7 +58,7 @@ function istGrenzFehler(message: string | undefined): string | undefined {
 }
 
 export async function zeiteintraegeLadenAktion(mitarbeiterId: string, von: string, bis: string): Promise<Zeiteintrag[]> {
-  const organisationId = await zugriffAufZeiten(mitarbeiterId, false)
+  const { organisationId } = await zugriffAufZeiten(mitarbeiterId, false)
   return ladeZeiteintraege(mitarbeiterId, organisationId, von, bis)
 }
 
@@ -54,9 +77,14 @@ export async function zeiteintragSpeichern(eintrag: {
   pauseMinuten: number
   notiz: string | null
 }): Promise<{ fehler?: string; eintrag?: Zeiteintrag }> {
-  const organisationId = await zugriffAufZeiten(eintrag.mitarbeiterId, true).catch(() => null)
-  if (!organisationId) return { fehler: 'Keine Berechtigung' }
+  const zugriff = await zugriffAufZeiten(eintrag.mitarbeiterId, true).catch(() => null)
+  if (!zugriff) return { fehler: 'Keine Berechtigung' }
+  const { organisationId } = zugriff
   const sitzung = { organisationId }
+  if (!zugriff.verwaltung) {
+    const bisher = eintrag.id ? await bestehenderArbeitstag(eintrag.id, organisationId, eintrag.mitarbeiterId) : null
+    if (!selbstBearbeitbar(eintrag.arbeitstag) || (bisher && !selbstBearbeitbar(bisher))) return { fehler: NUR_LEITUNG }
+  }
 
   const supabase = getServiceClient()
   const zeile = {
@@ -68,6 +96,7 @@ export async function zeiteintragSpeichern(eintrag: {
     ende: eintrag.ende,
     pause_minuten: eintrag.pauseMinuten,
     notiz: eintrag.notiz,
+    geaendert_von: (await aktuellerAkteur())?.name ?? null,
   }
 
   // Bedingtes Update (nur das eigene mitarbeiter_id/organisation_id) statt
@@ -102,16 +131,29 @@ export async function zeiteintragSpeichern(eintrag: {
       ende: data.ende as string | null,
       pauseMinuten: data.pause_minuten as number,
       notiz: data.notiz as string | null,
+      geaendert: !!eintrag.id,
     },
   }
 }
 
 export async function zeiteintragLoeschen(id: string, mitarbeiterId: string): Promise<{ fehler?: string }> {
-  const organisationId = await zugriffAufZeiten(mitarbeiterId, true).catch(() => null)
-  if (!organisationId) return { fehler: 'Keine Berechtigung' }
+  const zugriff = await zugriffAufZeiten(mitarbeiterId, true).catch(() => null)
+  if (!zugriff) return { fehler: 'Keine Berechtigung' }
+  const { organisationId } = zugriff
   const sitzung = { organisationId }
+  if (!zugriff.verwaltung) {
+    const bisher = await bestehenderArbeitstag(id, organisationId, mitarbeiterId)
+    if (bisher && !selbstBearbeitbar(bisher)) return { fehler: NUR_LEITUNG }
+  }
 
   const supabase = getServiceClient()
+  // Erst festhalten, wer löscht – der Trigger übernimmt den Namen in die Historie.
+  await supabase
+    .from('zeiteintraege')
+    .update({ geaendert_von: (await aktuellerAkteur())?.name ?? null })
+    .eq('id', id)
+    .eq('organisation_id', sitzung.organisationId)
+    .eq('mitarbeiter_id', mitarbeiterId)
   const { data, error } = await supabase
     .from('zeiteintraege')
     .delete()
@@ -123,6 +165,11 @@ export async function zeiteintragLoeschen(id: string, mitarbeiterId: string): Pr
   if (!data || data.length === 0) return { fehler: 'Zeiteintrag nicht gefunden' }
   await protokollieren('zeiterfassung', 'Arbeitszeit gelöscht', (await ladeMitarbeiter(mitarbeiterId, organisationId))?.name ?? null, mitarbeiterId)
   return {}
+}
+
+export async function zeiteintragVerlaufLaden(id: string, mitarbeiterId: string): Promise<ZeitHistorie[]> {
+  const { organisationId } = await zugriffAufZeiten(mitarbeiterId, false)
+  return ladeZeitHistorie(id, mitarbeiterId, organisationId)
 }
 
 export async function mitarbeiterAnlegen(input: {

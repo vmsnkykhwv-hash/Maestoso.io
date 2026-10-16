@@ -6,31 +6,40 @@ import type { ProtokollEintrag, ProtokollModul } from '@/lib/protokollTypen'
 
 export { PROTOKOLL_MODUL_LABEL, type ProtokollEintrag, type ProtokollModul } from '@/lib/protokollTypen'
 
+type Akteur = { organisationId: string; art: ProtokollEintrag['akteurArt']; id: string | null; name: string }
+
+// Wer gerade im Betrieb handelt – für das Protokoll und für die Historie der
+// Arbeitszeiten (lib/zeiterfassung), damit beide dieselbe Person nennen.
+export async function aktuellerAkteur(): Promise<Akteur | null> {
+  const sitzung = await getBetriebsSitzung()
+  if (!sitzung) return null
+  if (sitzung.art === 'inhaber') {
+    const konto = await ladeKonto('benutzer', sitzung.kontoId)
+    return { organisationId: sitzung.organisationId, art: 'inhaber', id: sitzung.kontoId, name: konto?.name || konto?.email || 'Verwaltungskonto' }
+  }
+  if (sitzung.art === 'tresen') {
+    return {
+      organisationId: sitzung.organisationId,
+      art: 'tresen',
+      id: sitzung.mitarbeiter?.id ?? null,
+      name: `${sitzung.mitarbeiter?.name ?? 'Unbekannt'} (${sitzung.geraetName})`,
+    }
+  }
+  return { organisationId: sitzung.organisationId, art: 'handy', id: sitzung.mitarbeiter.id, name: `${sitzung.mitarbeiter.name} (Handy)` }
+}
+
 // Schreibt einen Eintrag für die aktuell angemeldete Person. Ein Fehler beim
 // Protokollieren darf die eigentliche Aktion nie scheitern lassen (die ist
 // zu diesem Zeitpunkt schon gespeichert) – er wird nur geloggt.
 export async function protokollieren(modul: ProtokollModul, aktion: string, details?: string | null, objektId?: string | null) {
   try {
-    const sitzung = await getBetriebsSitzung()
-    if (!sitzung) return
-    let akteur: { art: ProtokollEintrag['akteurArt']; id: string | null; name: string }
-    if (sitzung.art === 'inhaber') {
-      const konto = await ladeKonto('benutzer', sitzung.kontoId)
-      akteur = { art: 'inhaber', id: sitzung.kontoId, name: konto?.name || konto?.email || 'Verwaltungskonto' }
-    } else if (sitzung.art === 'tresen') {
-      akteur = {
-        art: 'tresen',
-        id: sitzung.mitarbeiter?.id ?? null,
-        name: `${sitzung.mitarbeiter?.name ?? 'Unbekannt'} (${sitzung.geraetName})`,
-      }
-    } else {
-      akteur = { art: 'handy', id: sitzung.mitarbeiter.id, name: `${sitzung.mitarbeiter.name} (Handy)` }
-    }
+    const akteur = await aktuellerAkteur()
+    if (!akteur) return
 
     const { error } = await getServiceClient()
       .from('aenderungsprotokoll')
       .insert({
-        organisation_id: sitzung.organisationId,
+        organisation_id: akteur.organisationId,
         akteur_art: akteur.art,
         akteur_id: akteur.id,
         akteur_name: akteur.name,

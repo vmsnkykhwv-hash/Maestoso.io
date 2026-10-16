@@ -6,6 +6,8 @@
 import { headers } from 'next/headers'
 import { getServiceClient } from '@/lib/supabase/server'
 
+const ZAEHLER_VERFAELLT_NACH_MS = 60 * 60 * 1000
+
 function sperrdauerMinuten(fehlversuche: number, abVersuchen: number): number {
   const ueberschuss = fehlversuche - abVersuchen + 1
   return Math.min(2 ** Math.max(0, ueberschuss), 60)
@@ -27,9 +29,15 @@ export async function rateLimitPruefen(schluessel: string): Promise<{ erlaubt: b
 // öffentliche Formulare dürfen strenger sein.
 export async function rateLimitFehlgeschlagen(schluessel: string, abVersuchen: number): Promise<void> {
   const supabase = getServiceClient()
-  const { data } = await supabase.from('login_versuche').select('fehlversuche').eq('schluessel', schluessel).maybeSingle()
+  const { data } = await supabase.from('login_versuche').select('fehlversuche, letzter_versuch').eq('schluessel', schluessel).maybeSingle()
 
-  const fehlversuche = ((data?.fehlversuche as number | undefined) ?? 0) + 1
+  // Der Zähler verfällt nach einer Stunde Ruhe. Vorher wuchs er für immer –
+  // bei Gästeformularen zählt jede erfolgreiche Buchung mit, und viele
+  // Handys teilen sich im Mobilfunknetz eine IP: ab der 8. Buchung des
+  // Tages wurde dann jeder weitere Gast bis zu 60 Minuten gesperrt.
+  const letzter = data?.letzter_versuch ? new Date(data.letzter_versuch as string).getTime() : 0
+  const bisher = Date.now() - letzter > ZAEHLER_VERFAELLT_NACH_MS ? 0 : ((data?.fehlversuche as number | undefined) ?? 0)
+  const fehlversuche = bisher + 1
   const gesperrtBis =
     fehlversuche >= abVersuchen ? new Date(Date.now() + sperrdauerMinuten(fehlversuche, abVersuchen) * 60000).toISOString() : null
 

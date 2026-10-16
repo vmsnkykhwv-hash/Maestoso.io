@@ -5,7 +5,8 @@
 // soll nie an einer fehlenden Mail-Konfiguration scheitern.
 
 import { Resend } from 'resend'
-import { formatDatumKurz } from '@/lib/datum'
+import { mailPruefen } from '@/lib/mailPruefen'
+import { berlinZeitpunktAlsUtc, formatDatumKurz } from '@/lib/datum'
 import { escapeHtml } from '@/lib/htmlEscape'
 
 function client(): Resend | null {
@@ -48,12 +49,13 @@ function erinnerungsHtml(params: { organisationName: string; name: string; datum
   `
 }
 
-function scheduledAtVor(datum: string, uhrzeit: string, minutenVorher: number): string {
-  const [jahr, monat, tag] = datum.split('-').map(Number)
-  const [h, m] = uhrzeit.split(':').map(Number)
-  const termin = new Date(Date.UTC(jahr, monat - 1, tag, h, m))
-  termin.setUTCMinutes(termin.getUTCMinutes() - minutenVorher)
-  return termin.toISOString()
+// Datum/Uhrzeit sind Berliner Ortszeit – früher wurden sie als UTC gelesen,
+// die Erinnerung kam dadurch im Sommer erst zur Terminzeit statt 2 Stunden
+// vorher. null, wenn der Zeitpunkt schon vorbei ist (Buchung kurz vor dem
+// Termin): dann gibt es keine Erinnerung statt einer sofort zugestellten.
+function erinnerungsZeitpunkt(datum: string, uhrzeit: string, minutenVorher: number): string | null {
+  const zeitpunkt = new Date(berlinZeitpunktAlsUtc(datum, uhrzeit).getTime() - minutenVorher * 60_000)
+  return zeitpunkt.getTime() > Date.now() + 60_000 ? zeitpunkt.toISOString() : null
 }
 
 export async function reservierungsMailsSenden(params: {
@@ -72,29 +74,41 @@ export async function reservierungsMailsSenden(params: {
   }
 
   try {
-    await resend.emails.send({
+    mailPruefen(await resend.emails.send({
       from: absender(),
       to: params.empfaenger,
       subject: `Reservierungsbestätigung – ${params.organisationName}`,
       html: bestaetigungsHtml(params),
-    })
+    }))
   } catch (error) {
     console.error('Bestätigungsmail konnte nicht gesendet werden:', error)
   }
 
-  if (!params.erinnerung) return {}
+  const scheduledAt = params.erinnerung ? erinnerungsZeitpunkt(params.datum, params.uhrzeit, 120) : null
+  if (!scheduledAt) return {}
 
   try {
-    const antwort = await resend.emails.send({
+    const antwort = mailPruefen(await resend.emails.send({
       from: absender(),
       to: params.empfaenger,
       subject: `Erinnerung – Reservierung bei ${params.organisationName}`,
       html: erinnerungsHtml(params),
-      scheduledAt: scheduledAtVor(params.datum, params.uhrzeit, 120),
-    })
+      scheduledAt,
+    }))
     return { resendId: antwort.data?.id }
   } catch (error) {
     console.error('Erinnerungsmail konnte nicht geplant werden:', error)
     return {}
+  }
+}
+
+// Bei Storno/No-Show soll die geplante Erinnerung nicht mehr kommen.
+export async function erinnerungStornieren(resendId: string): Promise<void> {
+  const resend = client()
+  if (!resend) return
+  try {
+    mailPruefen(await resend.emails.cancel(resendId))
+  } catch (error) {
+    console.error('Geplante Erinnerung konnte nicht storniert werden:', error)
   }
 }

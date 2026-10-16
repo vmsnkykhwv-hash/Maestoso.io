@@ -227,7 +227,11 @@ function VeranstaltungsListe({ anfangsVeranstaltungen }: { anfangsVeranstaltunge
   function bestaetigen(v: Veranstaltung) {
     setFehler(null)
     startTransition(async () => {
-      const ergebnis = await veranstaltungBestaetigenAktion(v.id)
+      let ergebnis = await veranstaltungBestaetigenAktion(v.id)
+      if (ergebnis.rueckfrage) {
+        if (!window.confirm(ergebnis.rueckfrage)) return
+        ergebnis = await veranstaltungBestaetigenAktion(v.id, true)
+      }
       if (ergebnis.fehler) {
         setFehler(ergebnis.fehler)
         return

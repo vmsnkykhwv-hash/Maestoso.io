@@ -3,6 +3,7 @@
 // versendet (geloggt, nicht geworfen), eine fehlende Mail-Konfiguration
 // darf nie einen Gutschein-Kauf verhindern.
 import { Resend } from 'resend'
+import { mailPruefen } from '@/lib/mailPruefen'
 import { escapeHtml } from '@/lib/htmlEscape'
 
 function client(): Resend | null {
@@ -35,7 +36,7 @@ export async function gutscheinBestaetigungsMailSenden(params: {
   try {
     const organisationName = escapeHtml(params.organisationName)
     const kaeuferName = escapeHtml(params.kaeuferName)
-    await resend.emails.send({
+    mailPruefen(await resend.emails.send({
       from: absender(),
       to: params.empfaenger,
       subject: `Dein Gutschein bei ${organisationName}`,
@@ -46,7 +47,7 @@ export async function gutscheinBestaetigungsMailSenden(params: {
         <p style="font-size:20px;font-weight:700;letter-spacing:2px;">${escapeHtml(params.code)}</p>
         <p>Zeig diesen Code beim Bezahlen vor Ort vor, um ihn einzulösen.</p>
       `,
-    })
+    }))
   } catch (error) {
     console.error('Gutschein-Bestätigungsmail fehlgeschlagen:', error)
   }

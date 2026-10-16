@@ -119,7 +119,9 @@ export async function proxy(request: NextRequest) {
     // Impressum und Datenschutzerklärung der Plattform müssen ohne Login
     // erreichbar sein (§ 5 DDG: "leicht erkennbar, unmittelbar erreichbar").
     pathname === '/impressum' ||
-    pathname === '/datenschutz'
+    pathname === '/datenschutz' ||
+    // Abmeldelink aus Bewertungsmails – Gäste haben kein Konto.
+    pathname === '/bewertung-abmelden'
   ) {
     return weiter()
   }

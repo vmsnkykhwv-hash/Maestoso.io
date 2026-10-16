@@ -17,7 +17,9 @@ import { oeffentlicheAnfrageSchluessel, rateLimitFehlgeschlagen, rateLimitPruefe
 import type { SlotVerfuegbarkeit } from '@/lib/tischplan/types'
 
 const EMAIL_MUSTER = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-const SPERRE_AB_VERSUCHEN = 8
+// Pro IP und Stunde: im Mobilfunknetz teilen sich viele Gäste eine IP, ein
+// voller Abend darf nicht am Spamschutz scheitern – ein Skript schon.
+const SPERRE_AB_VERSUCHEN = 20
 
 export async function organisationOeffentlichLadenAktion(organisationId: string): Promise<{ name: string } | null> {
   const name = await organisationsName(organisationId)

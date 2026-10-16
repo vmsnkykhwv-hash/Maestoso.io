@@ -2,6 +2,7 @@
 // geloggt. Antworten gehen an die Plattform-Admins – "antworte einfach auf
 // diese Mail" ist der kürzeste Weg vom Testkunden zum Vertrag.
 import { Resend } from 'resend'
+import { mailPruefen } from '@/lib/mailPruefen'
 import { escapeHtml } from '@/lib/htmlEscape'
 
 export function datumLang(iso: string): string {
@@ -15,13 +16,13 @@ async function senden(an: string[], antwortAn: string[], betreff: string, absaet
     return
   }
   try {
-    await new Resend(key).emails.send({
+    mailPruefen(await new Resend(key).emails.send({
       from: process.env.RESEND_ABSENDER ?? 'reservierungen@resend.dev',
       to: an,
       replyTo: antwortAn.length > 0 ? antwortAn : undefined,
       subject: betreff,
       html: ['Hallo,', ...absaetze, 'Viele Grüße<br>Maestoso'].map((p) => `<p>${p}</p>`).join(''),
-    })
+    }))
   } catch (e) {
     console.error('Mailversand fehlgeschlagen', e)
   }

@@ -22,6 +22,7 @@ import {
   bewertungsanfrageStorniertMarkieren,
   BEWERTUNG_WIRD_GEPLANT,
 } from './daten'
+import { abmeldeLink, istAbgemeldet } from './abmeldung'
 import { bewertungsanfrageSenden, bewertungsanfrageStornieren } from './email'
 
 export async function bewertungsanfragePlanen(organisationId: string, reservierungId: string): Promise<void> {
@@ -39,7 +40,8 @@ export async function bewertungsanfragePlanen(organisationId: string, reservieru
     ladeReservierung(reservierungId),
     organisationsName(organisationId),
   ])
-  if (!reservierung || !organisationName) {
+  // Abgemeldete Gäste bekommen nie wieder eine Anfrage dieses Betriebs.
+  if (!reservierung || !organisationName || (await istAbgemeldet(organisationId, reservierung.email))) {
     await reservierungBewertungResendIdSetzen(reservierungId, null) // claim wieder freigeben
     return
   }
@@ -49,6 +51,7 @@ export async function bewertungsanfragePlanen(organisationId: string, reservieru
     empfaenger: reservierung.email,
     name: reservierung.name,
     googleUrl: einstellungen.googleUrl,
+    abmeldeLink: await abmeldeLink(organisationId, reservierung.email),
     ankerZeitpunkt: berlinZeitpunktAlsUtc(reservierung.datum, reservierung.uhrzeit),
     verzoegerungMinuten: einstellungen.verzoegerungMinuten,
   })
@@ -86,7 +89,7 @@ export async function bewertungsanfragePlanenFuerBestellung(organisationId: stri
   if (!beansprucht) return
 
   const [bestellung, organisationName] = await Promise.all([ladeBestellung(bestellungId), organisationsName(organisationId)])
-  if (!bestellung || !bestellung.email || !organisationName) {
+  if (!bestellung || !bestellung.email || !organisationName || (await istAbgemeldet(organisationId, bestellung.email))) {
     await bestellungBewertungResendIdSetzen(bestellungId, null) // claim wieder freigeben
     return
   }
@@ -96,6 +99,7 @@ export async function bewertungsanfragePlanenFuerBestellung(organisationId: stri
     empfaenger: bestellung.email,
     name: bestellung.name,
     googleUrl: einstellungen.googleUrl,
+    abmeldeLink: await abmeldeLink(organisationId, bestellung.email),
     ankerZeitpunkt: berlinZeitpunktAlsUtc(bestellung.datum, bestellung.uhrzeit),
     verzoegerungMinuten: einstellungen.verzoegerungMinuten,
   })

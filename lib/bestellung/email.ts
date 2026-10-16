@@ -5,6 +5,7 @@
 // Bestellung verhindern.
 
 import { Resend } from 'resend'
+import { mailPruefen } from '@/lib/mailPruefen'
 import { formatDatumKurz } from '@/lib/datum'
 import { escapeHtml } from '@/lib/htmlEscape'
 import type { BestellKanal, BestellPosition } from './types'
@@ -122,12 +123,12 @@ export async function bestellBestaetigungsMailSenden(params: {
     return
   }
   try {
-    await resend.emails.send({
+    mailPruefen(await resend.emails.send({
       from: absender(),
       to: params.empfaenger,
       subject: `Bestellbestätigung – ${params.organisationName}`,
       html: bestaetigungsHtml(params),
-    })
+    }))
   } catch (error) {
     console.error('Bestellbestätigung konnte nicht gesendet werden:', error)
   }
@@ -148,12 +149,12 @@ export async function bestellStatusMailSenden(params: {
     return
   }
   try {
-    await resend.emails.send({
+    mailPruefen(await resend.emails.send({
       from: absender(),
       to: params.empfaenger,
       subject: params.status === 'bestaetigt' ? `Bestellung bestätigt – ${params.organisationName}` : `Bestellung storniert – ${params.organisationName}`,
       html: statusHtml(params),
-    })
+    }))
   } catch (error) {
     console.error('Status-Mail konnte nicht gesendet werden:', error)
   }
@@ -176,12 +177,12 @@ export async function bestellBenachrichtigungsMailSenden(params: {
     return
   }
   try {
-    await resend.emails.send({
+    mailPruefen(await resend.emails.send({
       from: absender(),
       to: params.empfaenger,
       subject: `Neue Bestellung – ${params.organisationName}`,
       html: benachrichtigungsHtml(params),
-    })
+    }))
   } catch (error) {
     console.error('Personal-Benachrichtigung konnte nicht gesendet werden:', error)
   }

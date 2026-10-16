@@ -7,6 +7,7 @@
 // statt nur geloggt.
 
 import { Resend } from 'resend'
+import { mailPruefen } from '@/lib/mailPruefen'
 import { escapeHtml } from '@/lib/htmlEscape'
 
 function client(): Resend | null {
@@ -51,12 +52,12 @@ export async function bestellMailSenden(params: {
   if (!resend) return { fehler: 'Kein Mailversand konfiguriert (RESEND_API_KEY fehlt).' }
 
   try {
-    await resend.emails.send({
+    mailPruefen(await resend.emails.send({
       from: absender(),
       to: params.empfaenger,
       subject: `Bestellung – ${params.organisationName}`,
       html: bestellHtml(params),
-    })
+    }))
     return {}
   } catch (error) {
     return { fehler: error instanceof Error ? error.message : 'Mail konnte nicht gesendet werden.' }

@@ -12,6 +12,7 @@ import {
   eintragBestellungSetzen,
   eintragSetzen,
   eintraegeAlsBestelltMarkierenFuerOrganisation,
+  eintraegeBestelltZuruecksetzenFuerOrganisation,
   ladeAktiveLieferanten,
   ladeAllePruefungen,
   ladeArtikel,
@@ -257,11 +258,15 @@ export async function bestellungSendenAktion(lieferantId: string, eintragIds: st
   const beansprucht = await eintraegeAlsBestelltMarkierenFuerOrganisation(sitzung.organisationId, eintragIds)
   if (beansprucht.length === 0) return {}
   if (beansprucht.length !== eintragIds.length) {
+    await eintraegeBestelltZuruecksetzenFuerOrganisation(sitzung.organisationId, beansprucht)
     return { fehler: 'Ein Teil dieser Bestellung wurde bereits gesendet – bitte die Seite neu laden.' }
   }
 
   const organisationName = await organisationsName(sitzung.organisationId)
-  if (!organisationName) return { fehler: 'Organisation nicht gefunden' }
+  if (!organisationName) {
+    await eintraegeBestelltZuruecksetzenFuerOrganisation(sitzung.organisationId, beansprucht)
+    return { fehler: 'Organisation nicht gefunden' }
+  }
 
   const ergebnis = await bestellMailSenden({
     organisationName,
@@ -270,7 +275,10 @@ export async function bestellungSendenAktion(lieferantId: string, eintragIds: st
     kundennummer: lieferant.kundennummer,
     positionen: positionen.map((p) => ({ name: p.artikelName, einheit: p.einheit, menge: p.bestellmenge! })),
   })
-  if (ergebnis.fehler) return ergebnis
+  if (ergebnis.fehler) {
+    await eintraegeBestelltZuruecksetzenFuerOrganisation(sitzung.organisationId, beansprucht)
+    return { fehler: `Die Mail an den Lieferanten ging nicht raus, die Bestellung ist weiter offen. (${ergebnis.fehler})` }
+  }
 
   await protokollieren('lager', 'Bestellung an Lieferant gesendet', `${eintragIds.length} Position(en)`, lieferantId)
   return {}

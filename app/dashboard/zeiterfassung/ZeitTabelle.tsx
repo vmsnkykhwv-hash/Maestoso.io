@@ -2,12 +2,53 @@
 
 import { useEffect, useMemo, useState, useTransition } from 'react'
 import { Check } from 'lucide-react'
-import { zeiteintragSpeichern } from './actions'
+import { zeiteintragSpeichern, zeiteintragVerlaufLaden } from './actions'
 import { arbeitsminuten, formatDatumKurz, wochentagKurz } from '@/lib/zeiterfassung/zeit'
-import { EINTRAG_ART_LABEL, type EintragArt, type Zeiteintrag } from '@/lib/zeiterfassung/types'
+import { EINTRAG_ART_LABEL, type EintragArt, type ZeitHistorie, type ZeitStand, type Zeiteintrag } from '@/lib/zeiterfassung/types'
+
+function standText(z: ZeitStand | null): string {
+  if (!z) return '–'
+  if (z.art !== 'arbeit') return EINTRAG_ART_LABEL[z.art]
+  const zeit = (t: string | null) => (t ? t.slice(0, 5) : '?')
+  return `${zeit(z.beginn)}–${zeit(z.ende)}${z.pause_minuten ? `, ${z.pause_minuten} Min. Pause` : ''}`
+}
+
+// Zeigt, wer was wann geändert hat – Grundlage dafür ist die Historie in der
+// Datenbank (Migration 0031), die auch der Betrieb selbst nicht löschen kann.
+function Verlauf({ id, mitarbeiterId }: { id: string; mitarbeiterId: string }) {
+  const [eintraege, setEintraege] = useState<ZeitHistorie[] | null>(null)
+  const [offen, setOffen] = useState(false)
+  const [laedt, startLaden] = useTransition()
+
+  function umschalten() {
+    setOffen((o) => !o)
+    if (!eintraege) startLaden(async () => setEintraege(await zeiteintragVerlaufLaden(id, mitarbeiterId)))
+  }
+
+  return (
+    <div className="mt-2 text-xs">
+      <button type="button" onClick={umschalten} className="font-medium text-muted underline">
+        Nachträglich geändert · Verlauf {offen ? 'ausblenden' : 'anzeigen'}
+      </button>
+      {offen && (
+        <ul className="mt-1.5 space-y-1 text-muted">
+          {laedt && <li>Lade…</li>}
+          {eintraege?.map((h, i) => (
+            <li key={i}>
+              {new Date(h.zeitpunkt).toLocaleString('de-DE', { timeZone: 'Europe/Berlin', dateStyle: 'short', timeStyle: 'short' })} ·{' '}
+              {h.geaendertVon ?? 'unbekannt'}:{' '}
+              {h.aktion === 'angelegt' ? `angelegt mit ${standText(h.neu)}` : h.aktion === 'geloescht' ? `gelöscht (war ${standText(h.alt)})` : `${standText(h.alt)} → ${standText(h.neu)}`}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  )
+}
 
 type Zeile = {
   id?: string
+  geaendert?: boolean
   arbeitstag: string
   art: EintragArt
   beginn: string
@@ -23,10 +64,13 @@ function leereZeile(arbeitstag: string): Zeile {
 function zeileAusEintrag(e: Zeiteintrag): Zeile {
   return {
     id: e.id,
+    geaendert: e.geaendert,
     arbeitstag: e.arbeitstag,
     art: e.art,
-    beginn: e.beginn ?? '',
-    ende: e.ende ?? '',
+    // Postgres liefert "HH:MM:SS" – das Zeitfeld zeigte dann Sekunden an und
+    // ließ sich nach dem Speichern nicht mehr sauber auf HH:MM ändern.
+    beginn: e.beginn?.slice(0, 5) ?? '',
+    ende: e.ende?.slice(0, 5) ?? '',
     pause: String(e.pauseMinuten ?? 0),
     notiz: e.notiz ?? '',
   }
@@ -45,7 +89,11 @@ export default function ZeitTabelle({
   anfangsEintraege,
   onMinutenGeaendert,
   nurLesen = false,
+  selbstAb,
 }: {
+  // Mitarbeitende am Tresen: Tage vor diesem Datum korrigiert nur die
+  // Leitung (der Server lehnt es ohnehin ab).
+  selbstAb?: string
   // Auf dem gekoppelten Handy: eigene Zeiten nur ansehen, erfasst wird am
   // Tresen (die Server Actions lehnen Schreiben vom Handy ohnehin ab).
   nurLesen?: boolean
@@ -122,14 +170,18 @@ export default function ZeitTabelle({
 
   return (
     <fieldset disabled={nurLesen} className="space-y-2">
+      {selbstAb && !nurLesen && tage.some((t) => t < selbstAb) && (
+        <p className="text-xs text-muted">Heute und gestern trägst du selbst ein. Ältere Tage korrigiert die Leitung.</p>
+      )}
       {tage.map((tag) => {
         const zeile = zeilen[tag]
         if (!zeile) return null
         const dirty = istDirty(tag)
         const tagFehler = fehler[tag]
+        const gesperrt = !!selbstAb && tag < selbstAb
 
         return (
-          <div key={tag} className="rounded-2xl border border-border bg-card p-3">
+          <fieldset key={tag} disabled={gesperrt} className={`rounded-2xl border border-border bg-card p-3 ${gesperrt ? 'opacity-70' : ''}`}>
             <div className="flex items-center justify-between gap-2">
               <span className="text-sm font-semibold">
                 {wochentagKurz(tag)} {formatDatumKurz(tag)}
@@ -192,7 +244,9 @@ export default function ZeitTabelle({
                 {pending && speicherndTag === tag ? 'Speichert…' : 'Speichern'}
               </button>
             )}
-          </div>
+
+            {zeile.id && zeile.geaendert && <Verlauf id={zeile.id} mitarbeiterId={mitarbeiterId} />}
+          </fieldset>
         )
       })}
     </fieldset>

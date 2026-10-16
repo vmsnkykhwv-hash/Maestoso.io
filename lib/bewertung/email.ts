@@ -5,6 +5,7 @@
 // blockieren.
 
 import { Resend } from 'resend'
+import { mailPruefen } from '@/lib/mailPruefen'
 import { escapeHtml } from '@/lib/htmlEscape'
 
 function client(): Resend | null {
@@ -17,7 +18,7 @@ function absender(): string {
   return process.env.RESEND_ABSENDER ?? 'reservierungen@resend.dev'
 }
 
-function bewertungsHtml(params: { organisationName: string; name: string; googleUrl: string }): string {
+function bewertungsHtml(params: { organisationName: string; name: string; googleUrl: string; abmeldeLink: string }): string {
   const organisationName = escapeHtml(params.organisationName)
   const name = escapeHtml(params.name)
   return `
@@ -31,6 +32,10 @@ function bewertungsHtml(params: { organisationName: string; name: string; google
         </a>
       </p>
       <p>Danke für euren Besuch!</p>
+      <p style="margin-top:24px;font-size:12px;color:#777;">
+        Du möchtest keine Bewertungsanfragen mehr von ${organisationName}?
+        <a href="${escapeHtml(params.abmeldeLink)}" style="color:#777;">Hier abmelden</a>.
+      </p>
     </div>
   `
 }
@@ -40,6 +45,7 @@ export async function bewertungsanfrageSenden(params: {
   empfaenger: string
   name: string
   googleUrl: string
+  abmeldeLink: string
   // Der tatsächliche Zeitpunkt des Besuchs/der Lieferung (Reservierungs-
   // bzw. Bestell-Uhrzeit), nicht der Moment, in dem die Leitung den Status
   // setzt – sonst ginge die Mail raus, bevor der Gast überhaupt da war,
@@ -60,13 +66,13 @@ export async function bewertungsanfrageSenden(params: {
     // einem scheduledAt in der Vergangenheit zu scheitern.
     const scheduledAt = geplanterZeitpunkt.getTime() > Date.now() ? geplanterZeitpunkt.toISOString() : undefined
 
-    const antwort = await resend.emails.send({
+    const antwort = mailPruefen(await resend.emails.send({
       from: absender(),
       to: params.empfaenger,
       subject: `Wie war's bei ${params.organisationName}?`,
       html: bewertungsHtml(params),
       ...(scheduledAt ? { scheduledAt } : {}),
-    })
+    }))
     return { resendId: antwort.data?.id }
   } catch (error) {
     console.error('Bewertungsanfrage konnte nicht geplant werden:', error)
@@ -78,7 +84,7 @@ export async function bewertungsanfrageStornieren(resendId: string): Promise<voi
   const resend = client()
   if (!resend) return
   try {
-    await resend.emails.cancel(resendId)
+    mailPruefen(await resend.emails.cancel(resendId))
   } catch (error) {
     console.error('Geplante Bewertungsanfrage konnte nicht storniert werden:', error)
   }

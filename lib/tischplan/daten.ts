@@ -258,6 +258,21 @@ export async function reservierungStatusAendern(
   return {}
 }
 
+// Gibt die ID der geplanten Erinnerungsmail zurück und vergisst sie – nur
+// innerhalb der eigenen Organisation.
+export async function reservierungErinnerungAbholen(id: string, organisationId: string): Promise<string | null> {
+  const supabase = getServiceClient()
+  const { data } = await supabase
+    .from('reservierungen')
+    .select('resend_id')
+    .eq('id', id)
+    .eq('organisation_id', organisationId)
+    .maybeSingle()
+  const resendId = (data?.resend_id as string | null | undefined) ?? null
+  if (resendId) await supabase.from('reservierungen').update({ resend_id: null }).eq('id', id).eq('organisation_id', organisationId)
+  return resendId
+}
+
 // Fürs Bewertungsliste-Dashboard (lib/bewertung/daten.ts) – nur die paar
 // Felder, die dort angezeigt werden, nicht die volle Reservierung.
 export async function ladeErschieneneReservierungenFuerBewertung(

@@ -430,6 +430,32 @@ Demo (`claude.ai/artifact/...`) – es handelt sich ausschließlich um
 Backend-/Datenbankhärtung ohne neues oder geändertes Verhalten für
 Nutzer:innen, die alles richtig benutzen.
 
+### Nachbesserungen nach der Roadmap-Prüfung (Oktober 2026)
+
+- **Arbeitszeiten revisionssicher** (Migration `0031`): Jede Anlage,
+  Änderung und Löschung eines Zeiteintrags schreibt ein DB-Trigger mit
+  altem und neuem Wert und Urheber (`geaendert_von`) in
+  `zeiteintrag_historie`. Die Historie lässt sich weder ändern noch
+  löschen (Trigger), außer zusammen mit dem ganzen Betrieb. Mitarbeitende
+  tragen am Tresen nur heute und gestern selbst ein, ältere Tage korrigiert
+  das Verwaltungskonto. Geänderte Einträge zeigen einen Verlauf und stehen
+  im Export als „Nachträglich geändert“.
+- **Mailfehler werden erkannt** (`lib/mailPruefen.ts`): Resend v4 wirft
+  nicht, sondern liefert `{ error }` – vorher galt jede abgelehnte Mail als
+  gesendet. Jetzt greifen die vorhandenen Fehlerpfade (Log, Lager zeigt den
+  Fehler und lässt die Bestellung offen).
+- **Reservierungs-Erinnerung** jetzt wirklich 2 Stunden vorher (Berliner
+  Zeit statt UTC) und wird bei Storno/No-Show storniert.
+- **Spamschutz Gästeformulare**: Zähler verfällt nach einer Stunde Ruhe,
+  Reservieren/Bestellen sperrt erst ab 20 Anfragen pro IP – vorher sperrte
+  er ab der 8. Buchung aus demselben Mobilfunknetz.
+- **Bewertungsanfragen mit Abmeldelink** (Migration `0030`,
+  `/bewertung-abmelden`, signierter Link, Abmelden erst per Klick).
+- **Veranstaltungen**: keine Zusage bei Überschneidung mit einer anderen
+  bestätigten Veranstaltung, Rückfrage bei bestehenden Reservierungen,
+  Statuswechsel per Claim (Doppelklick legt keine zweite Blockierung an),
+  Mail an den Gast bei Zusage und Absage.
+
 ## Markenauftritt & Layout ("Konzertsaal")
 
 Nach dem Sicherheits-Audit folgte die Optik: Name, Farben, Typografie und
