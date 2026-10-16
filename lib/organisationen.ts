@@ -74,11 +74,20 @@ function slugifizieren(text: string): string {
 // Vorschlag für eine neue, plattformweit eindeutige Subdomain aus dem
 // Organisationsnamen (z. B. "Café Musterbetrieb" -> "cafe-musterbetrieb",
 // bei Kollision "cafe-musterbetrieb-2").
+// Subdomains, die nach Plattform statt nach Betrieb aussehen: "www" leitet
+// Vercel ohnehin um (der Betrieb wäre unerreichbar), und ein Betrieb unter
+// admin./login./support.maestoso-gastro.de taugt als Phishing-Kulisse.
+const RESERVIERTE_SUBDOMAINS = new Set([
+  'www', 'admin', 'login', 'team', 'api', 'app', 'mail', 'smtp', 'support', 'hilfe',
+  'status', 'docs', 'blog', 'konto', 'dashboard', 'plattform', 'plattform-admin', 'maestoso',
+])
+
 export async function subdomainVorschlagen(name: string): Promise<string> {
   const supabase = getServiceClient()
   const basis = slugifizieren(name) || 'organisation'
 
   for (let versuch = 1; versuch < 50; versuch++) {
+    if (versuch === 1 && RESERVIERTE_SUBDOMAINS.has(basis)) continue
     const kandidat = versuch === 1 ? basis : `${basis}-${versuch}`
     const { data } = await supabase.from('organisationen').select('id').eq('subdomain', kandidat).maybeSingle()
     if (!data) return kandidat
