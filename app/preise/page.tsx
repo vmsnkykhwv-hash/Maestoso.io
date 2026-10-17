@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation'
 import { Check } from 'lucide-react'
 import Kopf from '@/components/marketing/Kopf'
 import Fuss from '@/components/marketing/Fuss'
+import { freieFoundingPartnerPlaetze } from '@/lib/foundingPartner'
 import { RECHTSTEXTE_VOLLSTAENDIG } from '@/lib/rechtliches/plattform'
 import {
   EINRICHTUNG_EINZELMODUL,
@@ -11,8 +12,10 @@ import {
   MINDESTLAUFZEIT_MONATE,
   PAKETE,
   PREISE_OEFFENTLICH,
-  RABATT_EINRICHTUNG_JAHRESZAHLUNG_PROZENT,
+  FOUNDING_PARTNER_PLAETZE,
+  PREISGARANTIE_MONATE,
   RABATT_JAHRESZAHLUNG_PROZENT,
+  jahrespreis,
   TESTPHASE_TAGE,
   UST_HINWEIS,
   BEISPIEL_BESTELLUMSATZ,
@@ -28,21 +31,37 @@ export const metadata: Metadata = {
   robots: RECHTSTEXTE_VOLLSTAENDIG ? { index: true, follow: true } : { index: false, follow: false },
 }
 
-export default function Preise() {
+export const revalidate = 60
+
+export default async function Preise() {
   if (!PREISE_OEFFENTLICH) notFound()
+  const freiePlaetze = await freieFoundingPartnerPlaetze()
   const provision = portalProvision()
   const paket = guenstigstesPaketMitBestellung()
 
   return (
     <div className="bg-m-creme font-sans text-m-tinte">
-      <Kopf />
+      <Kopf foundingPartner={freiePlaetze > 0} />
       <main className="px-4 py-16 sm:px-6">
         <div className="mx-auto max-w-6xl">
           <p className="font-marke text-sm font-medium uppercase tracking-[0.16em] text-m-gold-dunkel">Preise</p>
           <h1 className="mt-2 max-w-3xl font-marke text-3xl font-semibold text-balance sm:text-5xl">Feste Monatspreise. Keine Provision, kein Preis pro Kopf.</h1>
           <p className="mt-4 max-w-2xl text-m-leise">
-            Preise je Betrieb und Monat. {TESTPHASE_TAGE} Tage kostenlos testen, bei jährlicher Zahlung {RABATT_JAHRESZAHLUNG_PROZENT} % günstiger.
+            Preise je Betrieb und Monat. {TESTPHASE_TAGE} Tage kostenlos testen, bei jährlicher Zahlung {RABATT_JAHRESZAHLUNG_PROZENT} % günstiger,
+            {' '}{PREISGARANTIE_MONATE} Monate Preisgarantie.
           </p>
+          {freiePlaetze > 0 && (
+            <Link
+              href="/#founding-partner"
+              className="mt-6 flex flex-col gap-1 rounded-2xl border border-m-gold bg-m-nacht px-5 py-4 text-white transition hover:border-m-gold-hell sm:flex-row sm:items-center sm:justify-between"
+            >
+              <span>
+                <span className="font-marke font-semibold text-m-gold">Founding Partner:</span> Einrichtung ab {euro(Math.min(...PAKETE.map((p) => p.einrichtungFoundingPartner)))} statt ab{' '}
+                {euro(Math.min(...PAKETE.map((p) => p.einrichtung)))}. Nur noch {freiePlaetze} von {FOUNDING_PARTNER_PLAETZE} Plätzen.
+              </span>
+              <span className="text-sm font-semibold text-m-gold-hell">Jetzt bewerben →</span>
+            </Link>
+          )}
 
           <div className="mt-12 grid gap-5 lg:grid-cols-3">
             {PAKETE.map((p) => {
@@ -58,6 +77,9 @@ export default function Preise() {
                   <p className="mt-6 font-marke text-4xl font-semibold tabular-nums">
                     {euro(p.preis)}
                     <span className="text-base font-normal text-m-leise"> / Monat</span>
+                  </p>
+                  <p className="mt-1 text-sm text-m-leise">
+                    oder {euro(jahrespreis(p.preis))} jährlich ({euro(jahrespreis(p.preis) / 12)} / Monat)
                   </p>
                   <p className="mt-1 text-sm text-m-leise">
                     einzeln {euro(einzeln)} – du sparst {Math.round((1 - p.preis / einzeln) * 100)} %
@@ -77,7 +99,13 @@ export default function Preise() {
                     })}
                   </ul>
                   <p className="mt-6 border-t border-m-linie pt-4 text-sm text-m-leise">
-                    Einrichtung einmalig {euro(p.einrichtung)} – bei Jahreszahlung {RABATT_EINRICHTUNG_JAHRESZAHLUNG_PROZENT} % günstiger
+                    Einrichtung einmalig {euro(p.einrichtung)}
+                    {freiePlaetze > 0 && (
+                      <>
+                        <br />
+                        <span className="font-semibold text-m-gold-dunkel">Founding Partner: {euro(p.einrichtungFoundingPartner)}</span>
+                      </>
+                    )}
                   </p>
                   <Link
                     href="/#kontakt"
@@ -120,10 +148,11 @@ export default function Preise() {
             <div>
               <h2 className="font-marke text-2xl font-semibold">Konditionen</h2>
               <ul className="mt-5 space-y-3 text-[15px] leading-relaxed text-m-leise">
-                <li><strong className="text-m-tinte">{TESTPHASE_TAGE} Tage kostenlos testen.</strong> Der Test endet von selbst, kündigen musst du nichts. Machst du nicht weiter, löschen wir deine Daten vollständig.</li>
+                <li><strong className="text-m-tinte">{TESTPHASE_TAGE} Tage kostenlos testen</strong> ab deinem Livegang. Der Test endet von selbst, kündigen musst du nichts. Machst du nicht weiter, löschen wir deine Daten vollständig.</li>
                 <li><strong className="text-m-tinte">Laufzeit {MINDESTLAUFZEIT_MONATE} Monate,</strong> danach monatlich zum Monatsende kündbar.</li>
-                <li><strong className="text-m-tinte">Jahreszahlung:</strong> {RABATT_JAHRESZAHLUNG_PROZENT} % auf die Monatspreise und {RABATT_EINRICHTUNG_JAHRESZAHLUNG_PROZENT} % auf die Einrichtung.</li>
-                <li><strong className="text-m-tinte">Einrichtung inklusive Domain-Umzug,</strong> Website-Inhalte, Grundeinstellungen und Einweisung deines Teams.</li>
+                <li><strong className="text-m-tinte">{PREISGARANTIE_MONATE} Monate Preisgarantie</strong> ab Vertragsbeginn: Dein Monatspreis steigt in dieser Zeit nicht.</li>
+                <li><strong className="text-m-tinte">Jahreszahlung:</strong> {RABATT_JAHRESZAHLUNG_PROZENT} % günstiger auf die Software.</li>
+                <li><strong className="text-m-tinte">Einrichtung inklusive Domain-Umzug,</strong> Website-Inhalte, Grundeinstellungen und Einweisung deines Teams. Sie wird einmalig zu Beginn berechnet, damit du im echten Betrieb testest.</li>
                 <li><strong className="text-m-tinte">Keine Provision</strong> auf Bestellungen, Reservierungen oder Gutscheine, kein Aufpreis pro Mitarbeiter.</li>
               </ul>
             </div>

@@ -36,7 +36,7 @@ await admin.getByPlaceholder('Name (z. B. Café Musterbetrieb)').fill('Café Tes
 await admin.getByPlaceholder('E-Mail Inhaber*in').fill('inhaber@musterbetrieb.de')
 await admin.getByRole('button', { name: 'Anlegen und einladen' }).click()
 const link = lokal((await admin.locator('button.font-mono span').first().textContent())!)
-ok(await sichtbar(admin, 'Test bis '), 'Neuer Betrieb startet in der Testphase')
+ok(await sichtbar(admin, 'Test nicht gestartet'), 'Neuer Betrieb: Testphase startet erst nach der Einrichtung')
 
 const inhaber = await (await browser.newContext()).newPage()
 await inhaber.goto(link)
@@ -46,9 +46,26 @@ await inhaber.getByRole('button', { name: 'Passwort festlegen' }).click()
 await zweiFa(inhaber)
 await inhaber.waitForURL('**/dashboard')
 
+ok(inhaber.url() === `${CAFE}/dashboard`, 'Während der Einrichtung ist das Dashboard offen')
+await admin.getByRole('button', { name: 'Test starten' }).click()
+ok(await sichtbar(admin, 'Test bis '), 'Admin startet die Testphase')
 const { data: org } = await db.from('organisationen').select('id, test_bis').eq('name', 'Café Test').single()
 const tage = (new Date(org!.test_bis).getTime() - Date.now()) / 86400000
-ok(tage > 29 && tage <= 30, `Testphase endet in 30 Tagen (${tage.toFixed(2)})`)
+ok(tage > 29 && tage <= 30.1, `Testphase endet nach 30 Tagen (${tage.toFixed(2)})`)
+
+// Paket in einem Klick: genau dessen Module frei, alle anderen auf Demo
+await admin.getByRole('button', { name: 'Full', exact: true }).click()
+await sichtbar(admin, 'Paket: Full')
+await admin.getByRole('button', { name: 'Basic', exact: true }).click()
+ok(await sichtbar(admin, 'Paket: Basic'), 'Admin setzt Paket Basic')
+const { data: frei } = await db.from('freischaltungen').select('modul').eq('organisation_id', org!.id).eq('freigeschaltet', true)
+ok(frei?.map((f) => f.modul).sort().join(',') === 'tischplan,website,zeiterfassung', `Basic schaltet genau Website, Tischplan, Zeiterfassung frei (${frei?.map((f) => f.modul).join(',')})`)
+
+// Founding Partner: Markierung zählt auf der Website die freien Plätze herunter
+await admin.getByRole('button', { name: 'Als Founding Partner markieren' }).click()
+ok(await sichtbar(admin, '1 von 3 Plätzen vergeben'), 'Founding Partner markiert')
+const startseite = await (await fetch(`http://127.0.0.1:${PORT}/`, { headers: { host: 'maestoso.test' } })).text()
+ok(startseite.includes('Noch <!-- -->2<!-- --> von <!-- -->3') || startseite.includes('Noch 2 von 3'), 'Website zeigt noch 2 von 3 freien Plätzen')
 
 // Testphase abgelaufen – gesperrt schon vor dem Cron-Lauf
 await db.from('organisationen').update({ test_bis: tageAb(-1) }).eq('id', org!.id)
@@ -94,6 +111,13 @@ ok(aktivGesetzt && (await sichtbar(admin, 'Vertrag aktiv')), 'Admin setzt Vertra
 await db.from('organisationen').update({ test_bis: tageAb(-100) }).eq('id', org!.id)
 await inhaber.reload()
 ok(inhaber.url() === `${CAFE}/dashboard` && !(await inhaber.getByText('Diese Seite ist gerade nicht erreichbar').isVisible()), 'Aktiver Vertrag: altes Testende spielt keine Rolle')
+
+// Löschen nur mit eingetipptem Namen
+await admin.getByRole('button', { name: 'Organisation löschen' }).click()
+const loeschKnopf = admin.getByRole('button', { name: 'Endgültig löschen' })
+await admin.getByLabel('Name des Betriebs zur Bestätigung').fill('Café Tes')
+ok(await loeschKnopf.isDisabled(), 'Löschen gesperrt, solange der Name nicht stimmt')
+await admin.getByRole('button', { name: 'Abbrechen' }).click()
 
 // Löschfrist abgelaufen
 await db.from('organisationen').update({ vertrag_status: 'gesperrt', loeschung_am: tageAb(-1) }).eq('id', org!.id)

@@ -24,12 +24,16 @@ import {
 import Kopf from '@/components/marketing/Kopf'
 import Fuss from '@/components/marketing/Fuss'
 import KontaktFormular from '@/components/marketing/KontaktFormular'
+import FoundingPartner from '@/components/marketing/FoundingPartner'
+import { freieFoundingPartnerPlaetze } from '@/lib/foundingPartner'
 import { RECHTSTEXTE_VOLLSTAENDIG } from '@/lib/rechtliches/plattform'
 import {
   BEISPIEL_BESTELLUMSATZ,
   MINDESTLAUFZEIT_MONATE,
   PORTAL_PROVISION_PROZENT,
+  FOUNDING_PARTNER_PLAETZE,
   PREISE_OEFFENTLICH,
+  PREISGARANTIE_MONATE,
   TESTPHASE_TAGE,
   euro,
   guenstigstesPaketMitBestellung,
@@ -54,6 +58,10 @@ export const metadata: Metadata = {
   // Erst indexieren, wenn das Impressum echte Angaben hat.
   robots: RECHTSTEXTE_VOLLSTAENDIG ? { index: true, follow: true } : { index: false, follow: false },
 }
+
+// Die freien Founding-Partner-Plätze ändern sich selten – eine Minute alt
+// reicht, und die Startseite bleibt schnell.
+export const revalidate = 60
 
 // Website zuerst: Sie ist die Adresse, unter der Gäste reservieren,
 // bestellen und Gutscheine kaufen – alles andere baut darauf auf.
@@ -161,11 +169,15 @@ const FRAGEN: { frage: string; antwort: string }[] = [
   },
   {
     frage: `Was passiert nach den ${TESTPHASE_TAGE} Tagen Test?`,
-    antwort: `Der Test endet von selbst, kündigen musst du nichts. Machst du weiter, läuft alles ohne Unterbrechung weiter. Wenn nicht, heben wir deine Daten noch ${ENTSCHEIDUNGSFRIST_TAGE} Tage auf, falls du es dir anders überlegst, und löschen sie dann vollständig.`,
+    antwort: `Der Test endet von selbst, kündigen musst du nichts. Machst du weiter, schließen wir den Vertrag ab und alles läuft ohne Unterbrechung weiter. Wenn nicht, heben wir deine Daten noch ${ENTSCHEIDUNGSFRIST_TAGE} Tage auf, falls du es dir anders überlegst, und löschen sie dann vollständig.`,
+  },
+  {
+    frage: 'Warum kostet die Einrichtung schon vor dem Test?',
+    antwort: `Damit du wirklich testen kannst: mit deiner Domain, deiner Speisekarte, deinen Tischen und deinem Team. Diese Arbeit machen wir vorab, die Einrichtung ist deshalb einmalig zu Beginn fällig. Die ${TESTPHASE_TAGE} Tage Software laufen erst ab deinem Livegang.`,
   },
   {
     frage: 'Wie lange läuft der Vertrag?',
-    antwort: `${MINDESTLAUFZEIT_MONATE} Monate, danach monatlich zum Monatsende kündbar. Bei jährlicher Zahlung wird es günstiger.`,
+    antwort: `${MINDESTLAUFZEIT_MONATE} Monate, danach monatlich zum Monatsende kündbar. Den Monatspreis garantieren wir dir ${PREISGARANTIE_MONATE} Monate lang, bei jährlicher Zahlung wird es 10 % günstiger.`,
   },
   {
     frage: 'Kann ich nur einzelne Module buchen?',
@@ -173,11 +185,13 @@ const FRAGEN: { frage: string; antwort: string }[] = [
   },
 ]
 
+// Einrichtung vor dem Test: getestet wird im echten Betrieb, mit Domain,
+// Karte und Team – die 30 Tage laufen erst ab dem Livegang.
 const ABLAUF = [
   { titel: 'Demo', text: '30 Minuten, online oder bei dir im Betrieb. Wir zeigen dir Maestoso an Abläufen aus deinem Alltag.' },
-  { titel: `${TESTPHASE_TAGE} Tage testen`, text: 'Kostenlos, mit deinen eigenen Tischen, Gerichten und Leuten. Der Test endet von selbst, kündigen musst du nichts.' },
-  { titel: 'Einrichtung', text: 'Entscheidest du dich für Maestoso, übernehmen wir Domain, Website-Inhalte und Grundeinstellungen und weisen dein Team ein.' },
-  { titel: 'Loslegen', text: 'Gäste reservieren und bestellen bei dir, dein Team plant und stempelt im selben System.' },
+  { titel: 'Einrichtung', text: 'Wir übernehmen Domain, Website-Inhalte und Grundeinstellungen, legen Tische und Team an und weisen alle ein.' },
+  { titel: `${TESTPHASE_TAGE} Tage testen`, text: 'Ab deinem Livegang ist die Software 30 Tage kostenlos. Der Test endet von selbst, kündigen musst du nichts.' },
+  { titel: 'Weitermachen', text: 'Gefällt es dir, läuft alles ohne Unterbrechung weiter. Den Monatspreis garantieren wir dir 24 Monate.' },
 ]
 
 function anteilText(preis: number, provision: number): string | null {
@@ -186,14 +200,15 @@ function anteilText(preis: number, provision: number): string | null {
   return null
 }
 
-export default function Startseite() {
+export default async function Startseite() {
   const provision = portalProvision()
   const paket = guenstigstesPaketMitBestellung()
   const anteil = anteilText(paket.preis, provision.von)
+  const freiePlaetze = await freieFoundingPartnerPlaetze()
 
   return (
     <div className="bg-m-creme font-sans text-m-tinte">
-      <Kopf />
+      <Kopf foundingPartner={freiePlaetze > 0} />
 
       <main>
         {/* Einstieg: das Markenbild, darunter die Zusage in Textform */}
@@ -212,6 +227,15 @@ export default function Startseite() {
             <div className="pointer-events-none absolute inset-x-0 bottom-0 h-1/4 bg-gradient-to-b from-transparent to-m-nacht" aria-hidden="true" />
           </div>
           <div className="mx-auto max-w-6xl px-4 pb-16 pt-8 sm:px-6 sm:pt-12">
+            {freiePlaetze > 0 && (
+              <Link
+                href="#founding-partner"
+                className="mb-5 inline-flex flex-wrap items-center gap-x-2 rounded-full border border-m-gold/50 bg-m-gold/10 px-4 py-1.5 text-sm text-m-gold-hell transition hover:border-m-gold"
+              >
+                <span className="font-semibold text-m-gold">Founding Partner gesucht</span>
+                <span>Noch {freiePlaetze} von {FOUNDING_PARTNER_PLAETZE} Plätzen mit Einführungspreis →</span>
+              </Link>
+            )}
             <h1 className="max-w-3xl font-marke text-3xl font-semibold leading-tight text-balance sm:text-5xl">
               Ein System für deinen Betrieb. <span className="text-m-gold">Ohne Provision an Portale.</span>
             </h1>
@@ -319,6 +343,8 @@ export default function Startseite() {
           </div>
         </section>
 
+        {freiePlaetze > 0 && <FoundingPartner freiePlaetze={freiePlaetze} />}
+
         <section id="ablauf" className="scroll-mt-20 px-4 py-20 sm:px-6">
           <div className="mx-auto max-w-6xl">
             <p className="font-marke text-sm font-medium uppercase tracking-[0.16em] text-m-gold-dunkel">So arbeitest du</p>
@@ -338,7 +364,7 @@ export default function Startseite() {
         <section className="bg-m-papier px-4 py-20 sm:px-6">
           <div className="mx-auto max-w-6xl">
             <p className="font-marke text-sm font-medium uppercase tracking-[0.16em] text-m-gold-dunkel">Der Weg zu Maestoso</p>
-            <h2 className="mt-2 max-w-2xl font-marke text-3xl font-semibold text-balance sm:text-4xl">Du testest, wir richten ein</h2>
+            <h2 className="mt-2 max-w-2xl font-marke text-3xl font-semibold text-balance sm:text-4xl">Wir richten ein, du testest im echten Betrieb</h2>
             <ol className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               {ABLAUF.map((a, i) => (
                 <li key={a.titel} className="rounded-2xl bg-white p-6">

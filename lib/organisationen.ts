@@ -31,6 +31,7 @@ export type OrganisationMitFreischaltungen = {
   customDomain: string | null
   freischaltungen: Record<ModulSchluessel, boolean>
   vertrag: Vertrag
+  foundingPartner: boolean
 }
 
 // Alle Organisationen mit ihren Freischaltungen (für den Plattform-Admin).
@@ -40,7 +41,7 @@ export async function ladeOrganisationen(): Promise<OrganisationMitFreischaltung
   const [{ data: organisationen }, { data: freischaltungen }] = await Promise.all([
     supabase
       .from('organisationen')
-      .select('id, name, erstellt_at, subdomain, custom_domain, vertrag_status, test_bis, loeschung_am')
+      .select('id, name, erstellt_at, subdomain, custom_domain, vertrag_status, test_bis, loeschung_am, founding_partner')
       .order('erstellt_at', { ascending: false }),
     supabase.from('freischaltungen').select('organisation_id, modul, freigeschaltet'),
   ])
@@ -62,6 +63,7 @@ export async function ladeOrganisationen(): Promise<OrganisationMitFreischaltung
     customDomain: (o.custom_domain as string | null) ?? null,
     freischaltungen: freischaltungenNachOrg.get(o.id as string) ?? leereFreischaltungen(),
     vertrag: vertragAusZeile(o),
+    foundingPartner: o.founding_partner === true,
   }))
 }
 

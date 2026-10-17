@@ -51,6 +51,7 @@ export default function AnfragenListe({ anfangs }: { anfangs: Anfrage[] }) {
                 <p className="font-semibold">
                   {ANFRAGE_ART_LABEL[a.art]} · {a.name}
                   {a.betrieb ? ` · ${a.betrieb}` : ''}
+                  {a.paket ? ` · Paket ${a.paket.charAt(0).toUpperCase()}${a.paket.slice(1)}` : ''}
                 </p>
                 <p className="text-xs text-muted">{datum(a.erstelltAt)}</p>
               </div>

@@ -10,7 +10,8 @@ import { MODULE, type ModulSchluessel } from '@/lib/module'
 import { subdomainVorschlagen, type OrganisationMitFreischaltungen } from '@/lib/organisationen'
 import { supportProtokollieren } from '@/lib/protokoll'
 import { verwaltungBenachrichtigen } from '@/lib/konten/sicherheitshinweis'
-import { organisationEndgueltigLoeschen, testVerlaengern, vertragAktivSetzen, vertragAusZeile, type Vertrag } from '@/lib/testphase/daten'
+import { FOUNDING_PARTNER_PLAETZE, paketFuer, type PaketSchluessel } from '@/lib/preise'
+import { organisationEndgueltigLoeschen, testStarten, testVerlaengern, vertragAktivSetzen, vertragAusZeile, type Vertrag } from '@/lib/testphase/daten'
 import { domainEntfernen, domainHinzufuegen, domainStatusLaden, vercelKonfiguriert, type DomainStatus } from '@/lib/vercel/domains'
 
 // Server Actions sind eigenständig aufrufbare Endpunkte (über die
@@ -56,8 +57,10 @@ export async function organisationAnlegen(
 
   const { data, error } = await supabase
     .from('organisationen')
-    .insert({ name: name.trim(), subdomain })
-    .select('id, name, erstellt_at, subdomain, custom_domain, vertrag_status, test_bis, loeschung_am')
+    // Testphase startet erst, wenn die Einrichtung fertig ist (Admin →
+    // „Test starten“) – sonst liefen die 30 Tage schon während der Einrichtung.
+    .insert({ name: name.trim(), subdomain, test_bis: null })
+    .select('id, name, erstellt_at, subdomain, custom_domain, vertrag_status, test_bis, loeschung_am, founding_partner')
     .single()
 
   if (error || !data) return { fehler: error?.message ?? 'Organisation konnte nicht angelegt werden' }
@@ -89,6 +92,7 @@ export async function organisationAnlegen(
       boolean
     >,
     vertrag: vertragAusZeile(data),
+    foundingPartner: false,
   }
   return { organisation, einladung, benutzer: await ladeBenutzerDerOrganisation(organisation.id) }
 }
@@ -231,8 +235,73 @@ export async function modulFreischaltenUmschalten(
   revalidatePath('/plattform-admin')
 }
 
-export async function organisationLoeschen(organisationId: string) {
+// Paket in einem Schritt: genau die Module des Pakets frei, alle anderen
+// auf Demo – sonst blieben beim Wechsel von Full auf Basic die
+// Full-Module still freigeschaltet.
+export async function paketSetzenAktion(organisationId: string, paket: PaketSchluessel): Promise<{ fehler?: string; freischaltungen?: Record<ModulSchluessel, boolean> }> {
   await plattformAdminOderFehler()
+  const gewaehlt = paketFuer(paket)
+  if (!gewaehlt) return { fehler: 'Unbekanntes Paket' }
+
+  const supabase = getServiceClient()
+  const jetzt = new Date().toISOString()
+  const freischaltungen = Object.fromEntries(MODULE.map((m) => [m.schluessel, gewaehlt.module.includes(m.schluessel)])) as Record<ModulSchluessel, boolean>
+  const { data: bisher } = await supabase.from('freischaltungen').select('modul, freigeschaltet').eq('organisation_id', organisationId)
+  if (!bisher || bisher.length === 0) return { fehler: 'Betrieb nicht gefunden' }
+  for (const f of bisher) {
+    const soll = freischaltungen[f.modul as ModulSchluessel] ?? false
+    if (f.freigeschaltet === soll) continue
+    const { error } = await supabase
+      .from('freischaltungen')
+      .update({ freigeschaltet: soll, freigeschaltet_am: soll ? jetzt : null })
+      .eq('organisation_id', organisationId)
+      .eq('modul', f.modul)
+    if (error) return { fehler: error.message }
+  }
+  await supportProtokollieren(organisationId, 'plattform', 'Paket gesetzt', gewaehlt.name)
+  revalidatePath('/plattform-admin')
+  return { freischaltungen }
+}
+
+export async function foundingPartnerSetzenAktion(organisationId: string, foundingPartner: boolean): Promise<{ fehler?: string }> {
+  await plattformAdminOderFehler()
+  const supabase = getServiceClient()
+  if (foundingPartner) {
+    const { count } = await supabase
+      .from('organisationen')
+      .select('id', { count: 'exact', head: true })
+      .eq('founding_partner', true)
+      .neq('id', organisationId)
+    if ((count ?? 0) >= FOUNDING_PARTNER_PLAETZE) return { fehler: `Alle ${FOUNDING_PARTNER_PLAETZE} Founding-Partner-Plätze sind schon vergeben.` }
+  }
+  const { error } = await supabase.from('organisationen').update({ founding_partner: foundingPartner }).eq('id', organisationId)
+  if (error) return { fehler: error.message }
+  await supportProtokollieren(organisationId, 'plattform', foundingPartner ? 'Als Founding Partner markiert' : 'Founding Partner entfernt')
+  revalidatePath('/plattform-admin')
+  // Die Website zeigt die freien Plätze an.
+  revalidatePath('/')
+  revalidatePath('/preise')
+  return {}
+}
+
+export async function testStartenAktion(organisationId: string, startDatum: string): Promise<{ fehler?: string; vertrag?: Vertrag }> {
+  await plattformAdminOderFehler()
+  const ergebnis = await testStarten(organisationId, startDatum)
+  if (ergebnis.vertrag?.testBis) {
+    const bis = new Date(ergebnis.vertrag.testBis).toLocaleDateString('de-DE', { timeZone: 'Europe/Berlin' })
+    await supportProtokollieren(organisationId, 'plattform', 'Testphase gestartet', `ab ${startDatum.split('-').reverse().join('.')}, bis ${bis}`)
+  }
+  revalidatePath('/plattform-admin')
+  return ergebnis
+}
+
+// Bestätigung per Name: ein versehentlicher Doppel-Tipp auf dem iPad soll
+// nie einen Betrieb samt allen Daten löschen.
+export async function organisationLoeschen(organisationId: string, bestaetigung: string) {
+  await plattformAdminOderFehler()
+  const { data: org } = await getServiceClient().from('organisationen').select('name').eq('id', organisationId).maybeSingle()
+  if (!org) throw new Error('Betrieb nicht gefunden')
+  if (bestaetigung.trim() !== (org.name as string).trim()) throw new Error('Der eingegebene Name stimmt nicht.')
   const ergebnis = await organisationEndgueltigLoeschen(organisationId)
   if (ergebnis.fehler) throw new Error(ergebnis.fehler)
   revalidatePath('/plattform-admin')

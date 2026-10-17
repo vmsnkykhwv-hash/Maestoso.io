@@ -1,12 +1,13 @@
 'use server'
 
-import { adminEmails, anfrageSpeichern, type AnfrageArt, type Tageszeit } from '@/lib/anfragen/daten'
+import { adminEmails, anfrageSpeichern, type AnfrageArt, type AnfragePaket, type Tageszeit } from '@/lib/anfragen/daten'
 import { anfrageMelden } from '@/lib/anfragen/email'
 import { oeffentlicheAnfrageSchluessel, rateLimitFehlgeschlagen, rateLimitPruefen, warteHinweis } from '@/lib/rateLimit'
 import { plattformUrl } from '@/lib/url'
 
 const EMAIL_MUSTER = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-const ARTEN: AnfrageArt[] = ['demo', 'frage', 'sonstiges']
+const ARTEN: AnfrageArt[] = ['demo', 'frage', 'sonstiges', 'founding_partner']
+const PAKETE: AnfragePaket[] = ['basic', 'plus', 'full']
 const TAGESZEITEN: Tageszeit[] = ['vormittags', 'nachmittags', 'abends']
 
 export type AnfrageEingabe = {
@@ -22,6 +23,7 @@ export type AnfrageEingabe = {
   // und der Zeitpunkt, zu dem das Formular angezeigt wurde.
   firma: string
   angezeigtUm: number
+  paket?: string
 }
 
 function kuerzen(wert: string, max: number): string | null {
@@ -40,7 +42,10 @@ export async function anfrageSendenAktion(e: AnfrageEingabe): Promise<{ fehler?:
   const email = e.email.trim().toLowerCase()
   if (!EMAIL_MUSTER.test(email) || email.length > 120) return { fehler: 'Bitte gib eine gültige E-Mail-Adresse an.' }
   const nachricht = kuerzen(e.nachricht, 3000)
-  if (art !== 'demo' && !nachricht) return { fehler: 'Bitte schreib kurz, worum es geht.' }
+  if ((art === 'frage' || art === 'sonstiges') && !nachricht) return { fehler: 'Bitte schreib kurz, worum es geht.' }
+  const betrieb = kuerzen(e.betrieb, 120)
+  if (art === 'founding_partner' && !betrieb) return { fehler: 'Bitte gib den Namen deines Betriebs an.' }
+  const paket = art === 'founding_partner' && PAKETE.includes(e.paket as AnfragePaket) ? (e.paket as AnfragePaket) : null
 
   let wunschtag: string | null = null
   if (art === 'demo' && e.wunschtag) {
@@ -61,12 +66,13 @@ export async function anfrageSendenAktion(e: AnfrageEingabe): Promise<{ fehler?:
   const anfrage = {
     art,
     name,
-    betrieb: kuerzen(e.betrieb, 120),
+    betrieb,
     email,
     telefon: kuerzen(e.telefon, 40),
     wunschtag,
     tageszeit,
     nachricht,
+    paket,
   }
   if (!(await anfrageSpeichern(anfrage))) {
     return { fehler: 'Das hat gerade nicht geklappt. Bitte versuch es gleich noch einmal oder schreib uns eine Mail.' }

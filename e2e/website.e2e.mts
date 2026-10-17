@@ -19,9 +19,9 @@ ok((await p.locator('meta[name="robots"]').getAttribute('content'))?.includes('n
 ok(await p.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), 'Startseite ragt auf dem Handy nicht über den Rand')
 
 await p.getByRole('link', { name: 'Demo anfragen' }).first().click()
-await p.getByLabel('Dein Name *').fill('Erika Muster')
-await p.getByLabel('Betrieb').fill('Café Musterbetrieb')
-await p.getByLabel('E-Mail *').fill('erika@musterbetrieb.de')
+await p.locator('#k-name').fill('Erika Muster')
+await p.locator('#k-betrieb').fill('Café Musterbetrieb')
+await p.locator('#k-email').fill('erika@musterbetrieb.de')
 await p.waitForTimeout(3200) // Spamschutz: Formular muss ein paar Sekunden offen sein
 await p.locator('form').getByRole('button', { name: 'Demo anfragen' }).click()
 ok(await p.getByText('Danke, deine Anfrage ist da.').waitFor({ timeout: 8000 }).then(() => true, () => false), 'Demo-Anfrage wird angenommen')
@@ -34,6 +34,23 @@ const preiseHtml = await preise.text()
 ok(preise.status === 200 && preiseHtml.includes('149') && preiseHtml.includes('Einzelne Module'), 'Preisseite ist freigegeben und zeigt die Pakete')
 const robots = await (await fetch(`http://127.0.0.1:${PORT}/robots.txt`, { headers: { host: 'maestoso.test' } })).text()
 ok(robots.includes('Disallow: /dashboard') && robots.includes('Disallow: /plattform-admin'), 'robots.txt hält Verwaltungsbereiche aus der Suche')
+
+// Founding Partner: Bereich mit freien Plätzen und eigener Bewerbung
+await p.goto(SEITE + '/')
+// Startseite ist bis zu 60 s zwischengespeichert – die genaue Zahl prüft testphase.e2e.mts.
+ok(await p.getByText(/Noch \d von 3 Plätzen frei/).isVisible(), 'Founding-Partner-Bereich zeigt freie Plätze')
+await p.locator('#fp-name').fill('Paul Partner')
+await p.locator('#fp-betrieb').fill('Bistro Musterbetrieb')
+await p.locator('#fp-email').fill('paul@musterbetrieb.de')
+await p.locator('#fp-paket').selectOption('plus')
+await p.waitForTimeout(3100) // Spamschutz: Mindestzeit zwischen Anzeigen und Absenden
+await p.getByRole('button', { name: 'Jetzt Founding Partner werden' }).click()
+ok(await p.getByText('Danke, deine Bewerbung ist da.').waitFor({ timeout: 8000 }).then(() => true, () => false), 'Founding-Partner-Bewerbung wird angenommen')
+const { data: bewerbung } = await createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+  .from('anfragen').select('art, paket, betrieb').eq('email', 'paul@musterbetrieb.de').maybeSingle()
+ok(bewerbung?.art === 'founding_partner' && bewerbung.paket === 'plus' && bewerbung.betrieb === 'Bistro Musterbetrieb', 'Bewerbung mit Paket gespeichert')
+const preisHtml = await (await fetch(`http://127.0.0.1:${PORT}/preise`, { headers: { host: 'maestoso.test' } })).text()
+ok(preisHtml.includes('529,20') && preisHtml.includes('Preisgarantie') && !preisHtml.includes('25 %'), 'Preisseite: Jahrespreis, Preisgarantie, kein Einrichtungsrabatt mehr')
 
 // Abmeldelink aus der Bewertungsmail: erst der Klick meldet ab, nicht schon das Öffnen.
 const db = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)

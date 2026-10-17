@@ -1,6 +1,7 @@
 import { getServiceClient } from '@/lib/supabase/server'
 
-export type AnfrageArt = 'demo' | 'frage' | 'sonstiges'
+export type AnfrageArt = 'demo' | 'frage' | 'sonstiges' | 'founding_partner'
+export type AnfragePaket = 'basic' | 'plus' | 'full'
 export type Tageszeit = 'vormittags' | 'nachmittags' | 'abends'
 export type AnfrageStatus = 'neu' | 'in_bearbeitung' | 'erledigt'
 
@@ -8,6 +9,7 @@ export const ANFRAGE_ART_LABEL: Record<AnfrageArt, string> = {
   demo: 'Demo-Termin',
   frage: 'Frage',
   sonstiges: 'Sonstiges',
+  founding_partner: 'Founding-Partner-Bewerbung',
 }
 export const TAGESZEIT_LABEL: Record<Tageszeit, string> = {
   vormittags: 'vormittags',
@@ -29,6 +31,7 @@ export type NeueAnfrage = {
   wunschtag: string | null
   tageszeit: Tageszeit | null
   nachricht: string | null
+  paket: AnfragePaket | null
 }
 
 export type Anfrage = NeueAnfrage & {
@@ -49,7 +52,7 @@ export async function anfrageSpeichern(anfrage: NeueAnfrage): Promise<boolean> {
 export async function ladeAnfragen(): Promise<Anfrage[]> {
   const { data } = await getServiceClient()
     .from('anfragen')
-    .select('id, erstellt_at, art, name, betrieb, email, telefon, wunschtag, tageszeit, nachricht, status, notiz')
+    .select('id, erstellt_at, art, name, betrieb, email, telefon, wunschtag, tageszeit, nachricht, paket, status, notiz')
     .order('erstellt_at', { ascending: false })
     .limit(300)
   return (data ?? []).map((z) => ({
@@ -62,6 +65,7 @@ export async function ladeAnfragen(): Promise<Anfrage[]> {
     telefon: (z.telefon as string | null) ?? null,
     wunschtag: (z.wunschtag as string | null) ?? null,
     tageszeit: (z.tageszeit as Tageszeit | null) ?? null,
+    paket: (z.paket as AnfragePaket | null) ?? null,
     nachricht: (z.nachricht as string | null) ?? null,
     status: z.status as AnfrageStatus,
     notiz: (z.notiz as string | null) ?? null,

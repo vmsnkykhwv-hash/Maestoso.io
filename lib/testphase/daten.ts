@@ -1,5 +1,7 @@
 import { getServiceClient } from '@/lib/supabase/server'
 import { domainEntfernen, vercelKonfiguriert } from '@/lib/vercel/domains'
+import { berlinZeitpunktAlsUtc } from '@/lib/datum'
+import { TESTPHASE_TAGE } from '@/lib/preise'
 import { plusTage, VERLAENGERUNG_TAGE, type VertragStatus } from './regeln'
 
 export type Vertrag = {
@@ -42,6 +44,29 @@ export async function testVerlaengern(organisationId: string): Promise<{ fehler?
     .update({
       vertrag_status: 'test',
       test_bis: neuesEnde.toISOString(),
+      loeschung_am: null,
+      erinnerung_test_gesendet: false,
+      erinnerung_loeschung_gesendet: false,
+    })
+    .eq('id', organisationId)
+    .select('vertrag_status, test_bis, loeschung_am')
+    .maybeSingle()
+  if (error || !data) return { fehler: error?.message ?? 'Betrieb nicht gefunden' }
+  return { vertrag: vertragAusZeile(data) }
+}
+
+// Teststart nach der Einrichtung: 30 Tage ab dem gewählten Tag (00:00 Uhr
+// Berliner Zeit). Setzt eine Sperre und alle Fristen zurück – der Start ist
+// bewusst auch nachträglich verschiebbar.
+export async function testStarten(organisationId: string, startDatum: string): Promise<{ fehler?: string; vertrag?: Vertrag }> {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(startDatum)) return { fehler: 'Bitte ein gültiges Startdatum wählen.' }
+  const ende = plusTage(berlinZeitpunktAlsUtc(startDatum, '00:00'), TESTPHASE_TAGE)
+  if (ende <= new Date()) return { fehler: 'Mit diesem Startdatum wäre die Testphase schon vorbei.' }
+  const { data, error } = await getServiceClient()
+    .from('organisationen')
+    .update({
+      vertrag_status: 'test',
+      test_bis: ende.toISOString(),
       loeschung_am: null,
       erinnerung_test_gesendet: false,
       erinnerung_loeschung_gesendet: false,

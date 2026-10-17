@@ -13,9 +13,13 @@ export const UST_HINWEIS = KLEINUNTERNEHMER
   : 'Alle Preise netto zzgl. gesetzlicher Umsatzsteuer.'
 
 export const STUNDENSATZ_EINRICHTUNG = 60
+// Preismodell 2026: Jahreszahlung nur 10 % auf die Software – die
+// Einrichtung kostet immer gleich viel, unabhängig von der Zahlungsweise.
 export const RABATT_JAHRESZAHLUNG_PROZENT = 10
-export const RABATT_EINRICHTUNG_JAHRESZAHLUNG_PROZENT = 25
 export const MINDESTLAUFZEIT_MONATE = 12
+// Ab Beginn des kostenpflichtigen Vertrags wird der Software-Grundpreis
+// nicht erhöht.
+export const PREISGARANTIE_MONATE = 24
 export const TESTPHASE_TAGE = 30
 
 // Website zuerst: ohne sie gibt es keine Adresse, unter der Gäste
@@ -32,39 +36,70 @@ export const EINZELPREISE: { modul: ModulSchluessel; name: string; preis: number
   { modul: 'veranstaltung', name: 'Veranstaltungsplanung', preis: 35 },
 ]
 
+export type PaketSchluessel = 'basic' | 'plus' | 'full'
+
 export type Paket = {
+  schluessel: PaketSchluessel
   name: 'Basic' | 'Plus' | 'Full'
   preis: number
   einrichtung: number
+  // Reduzierte Einrichtung für die ersten Pilotbetriebe (siehe FOUNDING_PARTNER).
+  einrichtungFoundingPartner: number
   zusage: string
   module: ModulSchluessel[]
 }
 
 export const PAKETE: Paket[] = [
   {
+    schluessel: 'basic',
     name: 'Basic',
     preis: 49,
     einrichtung: 349,
+    einrichtungFoundingPartner: 199,
     zusage: 'Für den Start: gefunden werden, Tische füllen, Zeiten sauber erfassen.',
     module: ['website', 'tischplan', 'zeiterfassung'],
   },
   {
+    schluessel: 'plus',
     name: 'Plus',
     preis: 109,
     einrichtung: 499,
+    einrichtungFoundingPartner: 299,
     zusage: 'Für Betriebe mit Abhol- oder Lieferservice und Schichtbetrieb.',
     module: ['website', 'tischplan', 'zeiterfassung', 'dienstplan', 'bestellung', 'bewertung'],
   },
   {
+    schluessel: 'full',
     name: 'Full',
     preis: 149,
     einrichtung: 699,
+    einrichtungFoundingPartner: 449,
     zusage: 'Für Betriebe mit Lager, Gutscheinverkauf und Feiern.',
     module: ['website', 'tischplan', 'zeiterfassung', 'dienstplan', 'bestellung', 'bewertung', 'lager', 'gutschein', 'veranstaltung'],
   },
 ]
 
 export const EINRICHTUNG_EINZELMODUL = 149
+
+// Founding Partner: bewusst begrenzt auf die ersten Pilotbetriebe – danach
+// verschwindet das Angebot von der Website (Plätze zählt
+// lib/foundingPartner.ts aus den im Admin markierten Betrieben).
+export const FOUNDING_PARTNER_PLAETZE = 3
+
+export function jahrespreis(monatspreis: number): number {
+  return Math.round(monatspreis * 12 * (100 - RABATT_JAHRESZAHLUNG_PROZENT)) / 100
+}
+
+export function paketFuer(schluessel: string | null | undefined): Paket | undefined {
+  return PAKETE.find((p) => p.schluessel === schluessel)
+}
+
+// Welches Paket zu den freigeschalteten Modulen passt – genau gleich, sonst
+// keins (dann "individuell"). Abgeleitet statt gespeichert: Freischaltungen
+// und Paketanzeige können so nie auseinanderlaufen.
+export function paketAusModulen(freigeschaltet: ModulSchluessel[]): Paket | undefined {
+  return PAKETE.find((p) => p.module.length === freigeschaltet.length && p.module.every((m) => freigeschaltet.includes(m)))
+}
 
 // Rechenbeispiel Lieferportal (Startseite und /preise): Provisionssätze
 // großer Portale laut deren öffentlichen Angaben.
@@ -86,5 +121,6 @@ export function summeEinzeln(module: ModulSchluessel[]): number {
 }
 
 export function euro(betrag: number): string {
-  return betrag.toLocaleString('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: betrag % 1 ? 2 : 0 })
+  const krumm = Math.round(betrag * 100) % 100 !== 0
+  return betrag.toLocaleString('de-DE', { style: 'currency', currency: 'EUR', minimumFractionDigits: krumm ? 2 : 0, maximumFractionDigits: krumm ? 2 : 0 })
 }

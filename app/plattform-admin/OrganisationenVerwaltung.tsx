@@ -2,7 +2,16 @@
 
 import { useState, useTransition } from 'react'
 import { Trash2 } from 'lucide-react'
-import { modulFreischaltenUmschalten, organisationAnlegen, organisationLoeschen, testVerlaengernAktion, vertragAktivAktion } from './actions'
+import {
+  foundingPartnerSetzenAktion,
+  modulFreischaltenUmschalten,
+  organisationAnlegen,
+  organisationLoeschen,
+  paketSetzenAktion,
+  testStartenAktion,
+  testVerlaengernAktion,
+  vertragAktivAktion,
+} from './actions'
 import DomainVerwaltung from './DomainVerwaltung'
 import KontenVerwaltung, { EinladungsLink } from './KontenVerwaltung'
 import type { BenutzerUebersicht } from '@/lib/konten/einladung'
@@ -10,6 +19,7 @@ import { MODULE, type ModulSchluessel } from '@/lib/module'
 import type { OrganisationMitFreischaltungen } from '@/lib/organisationen'
 import type { Vertrag } from '@/lib/testphase/daten'
 import { istGesperrt } from '@/lib/testphase/regeln'
+import { FOUNDING_PARTNER_PLAETZE, PAKETE, paketAusModulen } from '@/lib/preise'
 import { cn } from '@/lib/utils'
 
 function datum(iso: string | null): string {
@@ -25,7 +35,12 @@ function VertragAnzeige({ vertrag }: { vertrag: Vertrag }) {
       </span>
     )
   }
+  if (!vertrag.testBis) return <span className="rounded-full bg-accent/15 px-2 py-0.5 text-xs font-medium">Einrichtung · Test nicht gestartet</span>
   return <span className="rounded-full bg-locked-bg px-2 py-0.5 text-xs font-medium text-locked">Test bis {datum(vertrag.testBis)}</span>
+}
+
+function heute(): string {
+  return new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Berlin' })
 }
 
 export default function OrganisationenVerwaltung({
@@ -39,6 +54,9 @@ export default function OrganisationenVerwaltung({
   const [pending, startTransition] = useTransition()
   const [fehler, setFehler] = useState<string | null>(null)
   const [loeschenBestaetigenId, setLoeschenBestaetigenId] = useState<string | null>(null)
+  const [loeschEingabe, setLoeschEingabe] = useState('')
+  const [teststart, setTeststart] = useState<Record<string, string>>({})
+  const vergebenePlaetze = organisationen.filter((o) => o.foundingPartner).length
 
   const [name, setName] = useState('')
   const [inhaberEmail, setInhaberEmail] = useState('')
@@ -89,16 +107,63 @@ export default function OrganisationenVerwaltung({
   }
 
   function loeschen(organisationId: string) {
-    setOrganisationen((prev) => prev.filter((o) => o.id !== organisationId))
-    setLoeschenBestaetigenId(null)
-    startTransition(() => organisationLoeschen(organisationId))
+    setFehler(null)
+    const eingabe = loeschEingabe
+    startTransition(async () => {
+      try {
+        await organisationLoeschen(organisationId, eingabe)
+        setOrganisationen((prev) => prev.filter((o) => o.id !== organisationId))
+        setLoeschenBestaetigenId(null)
+        setLoeschEingabe('')
+      } catch {
+        setFehler('Löschen fehlgeschlagen – stimmt der eingegebene Name?')
+      }
+    })
+  }
+
+  function paketSetzen(organisationId: string, paket: (typeof PAKETE)[number]['schluessel']) {
+    setFehler(null)
+    startTransition(async () => {
+      const ergebnis = await paketSetzenAktion(organisationId, paket)
+      if (ergebnis.fehler || !ergebnis.freischaltungen) {
+        setFehler(ergebnis.fehler ?? 'Paket konnte nicht gesetzt werden')
+        return
+      }
+      const freischaltungen = ergebnis.freischaltungen
+      setOrganisationen((prev) => prev.map((o) => (o.id === organisationId ? { ...o, freischaltungen } : o)))
+    })
+  }
+
+  function foundingPartnerUmschalten(organisationId: string, wert: boolean) {
+    setFehler(null)
+    startTransition(async () => {
+      const ergebnis = await foundingPartnerSetzenAktion(organisationId, wert)
+      if (ergebnis.fehler) {
+        setFehler(ergebnis.fehler)
+        return
+      }
+      setOrganisationen((prev) => prev.map((o) => (o.id === organisationId ? { ...o, foundingPartner: wert } : o)))
+    })
+  }
+
+  function testStarten(organisationId: string) {
+    setFehler(null)
+    const start = teststart[organisationId] ?? heute()
+    startTransition(async () => {
+      const ergebnis = await testStartenAktion(organisationId, start)
+      if (ergebnis.fehler || !ergebnis.vertrag) {
+        setFehler(ergebnis.fehler ?? 'Test konnte nicht gestartet werden')
+        return
+      }
+      const vertrag = ergebnis.vertrag
+      setOrganisationen((prev) => prev.map((o) => (o.id === organisationId ? { ...o, vertrag } : o)))
+    })
   }
 
   return (
     <div className="space-y-6">
       <div className="rounded-2xl border border-border bg-card p-5">
         <h2 className="mb-3 text-sm font-semibold">Neue Organisation anlegen</h2>
-        {fehler && <p className="mb-2 text-sm text-danger">{fehler}</p>}
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <input
             value={name}
@@ -134,6 +199,11 @@ export default function OrganisationenVerwaltung({
         )}
       </div>
 
+      <p className="text-sm text-muted">
+        Founding Partner: {vergebenePlaetze} von {FOUNDING_PARTNER_PLAETZE} Plätzen vergeben
+      </p>
+      {fehler && <p className="rounded-xl bg-danger-bg px-3 py-2 text-sm text-danger">{fehler}</p>}
+
       <div className="space-y-3">
         {organisationen.length === 0 && <p className="text-sm text-muted">Noch keine Organisationen angelegt.</p>}
         {organisationen.map((o) => (
@@ -146,6 +216,22 @@ export default function OrganisationenVerwaltung({
                   <VertragAnzeige vertrag={o.vertrag} />
                   {o.vertrag.status !== 'aktiv' && (
                     <>
+                      <span className="flex items-center gap-1">
+                        <input
+                          type="date"
+                          aria-label="Teststart"
+                          value={teststart[o.id] ?? heute()}
+                          onChange={(e) => setTeststart((prev) => ({ ...prev, [o.id]: e.target.value }))}
+                          className="rounded-lg border border-border bg-background px-2 py-0.5 text-xs"
+                        />
+                        <button
+                          onClick={() => testStarten(o.id)}
+                          disabled={pending}
+                          className="rounded-lg border border-border px-2.5 py-1 text-xs font-medium disabled:opacity-40"
+                        >
+                          {o.vertrag.testBis ? 'Test neu starten' : 'Test starten'}
+                        </button>
+                      </span>
                       <button
                         onClick={() => vertragAendern(o.id, vertragAktivAktion)}
                         disabled={pending}
@@ -153,39 +239,58 @@ export default function OrganisationenVerwaltung({
                       >
                         Vertrag aktiv
                       </button>
-                      <button
-                        onClick={() => vertragAendern(o.id, testVerlaengernAktion)}
-                        disabled={pending}
-                        className="rounded-lg border border-border px-2.5 py-1 text-xs font-medium disabled:opacity-40"
-                      >
-                        Test verlängern (+14 Tage)
-                      </button>
+                      {o.vertrag.testBis && (
+                        <button
+                          onClick={() => vertragAendern(o.id, testVerlaengernAktion)}
+                          disabled={pending}
+                          className="rounded-lg border border-border px-2.5 py-1 text-xs font-medium disabled:opacity-40"
+                        >
+                          Test verlängern (+14 Tage)
+                        </button>
+                      )}
                     </>
                   )}
                 </div>
               </div>
-              {loeschenBestaetigenId === o.id ? (
-                <div className="flex flex-none items-center gap-2">
+              <button
+                onClick={() => {
+                  setLoeschenBestaetigenId(loeschenBestaetigenId === o.id ? null : o.id)
+                  setLoeschEingabe('')
+                }}
+                aria-label="Organisation löschen"
+                className="flex-none text-muted"
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
+            </div>
+
+            {loeschenBestaetigenId === o.id && (
+              <div className="mt-3 rounded-xl border border-danger/40 bg-danger-bg p-3">
+                <p className="text-xs text-danger">
+                  Löscht <strong>{o.name}</strong> endgültig mit allen Daten, Konten, Bildern und der Domain. Das lässt sich nicht rückgängig machen.
+                  Zum Bestätigen den Namen des Betriebs eintippen:
+                </p>
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  <input
+                    value={loeschEingabe}
+                    onChange={(e) => setLoeschEingabe(e.target.value)}
+                    placeholder={o.name}
+                    aria-label="Name des Betriebs zur Bestätigung"
+                    className="min-w-0 flex-1 rounded-lg border border-border bg-background px-2.5 py-1.5 text-sm"
+                  />
                   <button onClick={() => setLoeschenBestaetigenId(null)} className="text-xs text-muted">
                     Abbrechen
                   </button>
                   <button
                     onClick={() => loeschen(o.id)}
-                    className="rounded-lg bg-danger px-2.5 py-1.5 text-xs font-medium text-white"
+                    disabled={pending || loeschEingabe.trim() !== o.name.trim()}
+                    className="rounded-lg bg-danger px-2.5 py-1.5 text-xs font-medium text-white disabled:opacity-40"
                   >
-                    Löschen
+                    Endgültig löschen
                   </button>
                 </div>
-              ) : (
-                <button
-                  onClick={() => setLoeschenBestaetigenId(o.id)}
-                  aria-label="Organisation löschen"
-                  className="flex-none text-muted"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </button>
-              )}
-            </div>
+              </div>
+            )}
 
             <div className="mt-4">
               <KontenVerwaltung organisationId={o.id} anfangsBenutzer={benutzerNachOrganisation[o.id] ?? neueBenutzer[o.id] ?? []} />
@@ -194,6 +299,43 @@ export default function OrganisationenVerwaltung({
             <div className="mt-3">
               <DomainVerwaltung organisationId={o.id} anfangsDomain={o.customDomain} />
             </div>
+
+            {(() => {
+              const freigeschaltet = MODULE.filter((m) => o.freischaltungen[m.schluessel]).map((m) => m.schluessel)
+              const paket = paketAusModulen(freigeschaltet)
+              return (
+                <div className="mt-4 flex flex-wrap items-center gap-2">
+                  <span className="text-xs font-semibold">
+                    Paket: {paket ? paket.name : freigeschaltet.length === 0 ? 'keins (alles Demo)' : `individuell (${freigeschaltet.length} Module)`}
+                  </span>
+                  {PAKETE.map((p) => (
+                    <button
+                      key={p.schluessel}
+                      onClick={() => paketSetzen(o.id, p.schluessel)}
+                      disabled={pending}
+                      aria-pressed={paket?.schluessel === p.schluessel}
+                      className={cn(
+                        'rounded-lg border px-3 py-1 text-xs font-semibold disabled:opacity-40',
+                        paket?.schluessel === p.schluessel ? 'border-accent bg-accent text-accent-foreground' : 'border-border'
+                      )}
+                    >
+                      {p.name}
+                    </button>
+                  ))}
+                  <button
+                    onClick={() => foundingPartnerUmschalten(o.id, !o.foundingPartner)}
+                    disabled={pending}
+                    aria-pressed={o.foundingPartner}
+                    className={cn(
+                      'rounded-lg border px-3 py-1 text-xs font-semibold disabled:opacity-40',
+                      o.foundingPartner ? 'border-accent bg-accent/15' : 'border-border text-muted'
+                    )}
+                  >
+                    {o.foundingPartner ? '★ Founding Partner' : 'Als Founding Partner markieren'}
+                  </button>
+                </div>
+              )
+            })()}
 
             <div className="mt-3 flex flex-wrap gap-2">
               {MODULE.map((m) => {

@@ -643,7 +643,19 @@ Einrichtung je Einzelmodul 149 €.
 - Einrichtung kalkuliert mit ~60 €/Std. (Basic ~5,5 Std., Plus ~8 Std.,
   Full ~11,5 Std.), auf runde Preispunkte gesetzt (349 / 499 / 699 €), inklusive Domain-Umzug, Website-Inhalten,
   Grundeinstellungen und Einweisung.
-- Jahreszahlung: 10 % auf die Monatspreise und 25 % auf die Einrichtung.
+- Jahreszahlung: 10 % auf die Software (Basic 529,20 €, Plus 1.177,20 €,
+  Full 1.609,20 € im Jahr). Die Einrichtung kostet immer gleich viel – der
+  frühere 25-%-Einrichtungsrabatt ist entfallen (Preismodell 2026).
+- 24 Monate Preisgarantie auf den Software-Grundpreis ab Vertragsbeginn.
+- Einrichtung wird vor bzw. bei Beginn der Einrichtung berechnet; die 30
+  Testtage starten erst danach (Admin → „Test starten“).
+- Founding Partner (die ersten 3 Betriebe, `FOUNDING_PARTNER_PLAETZE`):
+  Einrichtung 199 / 299 / 449 € statt 349 / 499 / 699 €, Monatspreise
+  regulär. Bewerbung über eigenes Formular auf der Startseite
+  (`components/marketing/FoundingPartner.tsx`, Anfrage-Art
+  `founding_partner` mit Paketwunsch, Migration `0032`). Die freien Plätze
+  zählt die Website aus den im Admin markierten Betrieben; sind alle
+  vergeben, verschwindet das Angebot.
 - Laufzeit 12 Monate, danach monatlich zum Monatsende kündbar.
 - 30 Tage kostenlos testen; danach automatische Sperre, nach weiteren
   30 Tagen ohne Entscheidung Löschung aller Zugänge und Daten (siehe
@@ -655,8 +667,10 @@ Einrichtung je Einzelmodul 149 €.
 
 ### Testphase (Migration `0029`, `lib/testphase/`)
 
-- Jeder neue Betrieb startet mit `vertrag_status = 'test'` und
-  `test_bis = Anlage + 30 Tage`. Ist `test_bis` vorbei, gilt der Betrieb
+- Neue Betriebe starten mit `vertrag_status = 'test'` und ohne `test_bis`
+  („Einrichtung · Test nicht gestartet“) – keine Frist, keine Sperre. Der
+  Admin startet die 30 Tage nach der Einrichtung mit einem wählbaren
+  Startdatum (`testStarten`). Ist `test_bis` vorbei, gilt der Betrieb
   sofort als gesperrt (`istGesperrt` in `lib/testphase/regeln.ts`) – nicht
   erst nach dem Cron-Lauf.
 - Gesperrt heißt: `proxy.ts` zeigt auf der Domain des Betriebs nur noch
@@ -672,6 +686,10 @@ Einrichtung je Einzelmodul 149 €.
   Verwaltungskonten, Antworten an die Plattform-Admins; die Admins
   bekommen zusätzlich eine Zusammenfassung. Außerdem löscht der Lauf
   Website-Anfragen, die älter als 12 Monate sind (Datenschutzerklärung).
+- Plattform-Admin: Paket-Buttons Basic/Plus/Full schalten genau die
+  Module des Pakets frei (alle anderen auf Demo); das angezeigte Paket wird
+  aus den Freischaltungen abgeleitet (`paketAusModulen`), sonst
+  „individuell“. Löschen eines Betriebs nur nach Eintippen seines Namens.
 - Plattform-Admin: „Vertrag aktiv“ beendet alle Fristen, „Test verlängern“
   gibt 14 Tage ab dem späteren von heute/Testende und hebt eine Sperre
   sofort auf. Beides steht im Änderungsprotokoll des Betriebs.

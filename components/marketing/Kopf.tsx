@@ -10,7 +10,10 @@ const LINKS = [
   { href: '/#fragen', text: 'Fragen' },
 ]
 
-export default function Kopf() {
+// foundingPartner: nur solange Plätze frei sind, sonst wäre der Link eine
+// Sackgasse.
+export default function Kopf({ foundingPartner = false }: { foundingPartner?: boolean }) {
+  const links = foundingPartner ? [...LINKS.slice(0, 1), { href: '/#founding-partner', text: 'Founding Partner' }, ...LINKS.slice(1)] : LINKS
   return (
     <header className="sticky top-0 z-30 border-b border-white/10 bg-m-nacht/90 backdrop-blur">
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
@@ -18,7 +21,7 @@ export default function Kopf() {
           <Wortmarke hell />
         </Link>
         <nav className="hidden items-center gap-6 text-sm text-white/75 lg:flex" aria-label="Hauptnavigation">
-          {LINKS.map((l) => (
+          {links.map((l) => (
             <Link key={l.href} href={l.href} className="hover:text-white">
               {l.text}
             </Link>
