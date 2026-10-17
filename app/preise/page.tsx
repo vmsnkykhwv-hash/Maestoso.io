@@ -12,7 +12,6 @@ import {
   MINDESTLAUFZEIT_MONATE,
   PAKETE,
   PREISE_OEFFENTLICH,
-  FOUNDING_PARTNER_PLAETZE,
   PREISGARANTIE_MONATE,
   RABATT_JAHRESZAHLUNG_PROZENT,
   jahrespreis,
@@ -57,7 +56,7 @@ export default async function Preise() {
             >
               <span>
                 <span className="font-marke font-semibold text-m-gold">Founding Partner:</span> Einrichtung ab {euro(Math.min(...PAKETE.map((p) => p.einrichtungFoundingPartner)))} statt ab{' '}
-                {euro(Math.min(...PAKETE.map((p) => p.einrichtung)))}. Nur noch {freiePlaetze} von {FOUNDING_PARTNER_PLAETZE} Plätzen.
+                {euro(Math.min(...PAKETE.map((p) => p.einrichtung)))}. Plätze begrenzt.
               </span>
               <span className="text-sm font-semibold text-m-gold-hell">Jetzt bewerben →</span>
             </Link>

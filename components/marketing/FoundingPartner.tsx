@@ -1,11 +1,12 @@
 import Link from 'next/link'
 import { Check } from 'lucide-react'
 import FoundingPartnerFormular from './FoundingPartnerFormular'
-import { FOUNDING_PARTNER_PLAETZE, PAKETE, PREISGARANTIE_MONATE, TESTPHASE_TAGE, euro } from '@/lib/preise'
+import { PAKETE, PREISGARANTIE_MONATE, TESTPHASE_TAGE, euro } from '@/lib/preise'
 
-// Angebot für die ersten Pilotbetriebe. Knappheit nur, solange sie stimmt:
-// die freien Plätze kommen aus den im Admin markierten Betrieben, und ohne
-// freien Platz gibt es kein Formular, sondern den Hinweis darauf.
+// Angebot für die ersten Pilotbetriebe. Bewusst ohne Zahl der freien Plätze
+// („3 von 3 frei“ wirkt leer, „begrenzt“ zieht mehr Anfragen) – die Zahl
+// steuert nur, ob das Angebot überhaupt erscheint (im Admin markierte
+// Betriebe); ohne freien Platz gibt es kein Formular mehr.
 export default function FoundingPartner({ freiePlaetze }: { freiePlaetze: number }) {
   const hoechsteErsparnis = Math.max(...PAKETE.map((p) => p.einrichtung - p.einrichtungFoundingPartner))
   const vorteile = [
@@ -20,13 +21,13 @@ export default function FoundingPartner({ freiePlaetze }: { freiePlaetze: number
       <div className="mx-auto grid max-w-6xl gap-10 lg:grid-cols-[1fr_1.1fr]">
         <div>
           <p className="inline-flex items-center gap-2 rounded-full border border-m-gold/40 px-3 py-1 font-marke text-xs font-semibold uppercase tracking-[0.14em] text-m-gold">
-            Founding Partner · nur {FOUNDING_PARTNER_PLAETZE} Betriebe
+            Founding Partner · Plätze begrenzt
           </p>
           <h2 className="mt-4 font-marke text-3xl font-semibold text-balance sm:text-4xl">
             Werde jetzt Founding Partner und sichere dir den Einführungspreis
           </h2>
           <p className="mt-4 text-white/75">
-            Wir suchen {FOUNDING_PARTNER_PLAETZE} Betriebe, die Maestoso von Anfang an mit uns gestalten. Du bekommst die Einrichtung deutlich günstiger,
+            Wir suchen wenige Betriebe, die Maestoso von Anfang an mit uns gestalten. Du bekommst die Einrichtung deutlich günstiger,
             wir bekommen dein ehrliches Feedback aus dem echten Betrieb.
           </p>
           <ul className="mt-6 space-y-2.5">
@@ -69,9 +70,7 @@ export default function FoundingPartner({ freiePlaetze }: { freiePlaetze: number
         <div>
           {freiePlaetze > 0 ? (
             <>
-              <p className="mb-3 text-sm font-semibold text-m-gold" aria-live="polite">
-                Noch {freiePlaetze} von {FOUNDING_PARTNER_PLAETZE} Plätzen frei
-              </p>
+              <p className="mb-3 text-sm font-semibold text-m-gold">Die Plätze sind begrenzt. Bewirb dich jetzt, solange das Angebot gilt.</p>
               <FoundingPartnerFormular />
             </>
           ) : (

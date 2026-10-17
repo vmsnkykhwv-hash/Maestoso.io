@@ -65,7 +65,7 @@ ok(frei?.map((f) => f.modul).sort().join(',') === 'tischplan,website,zeiterfassu
 await admin.getByRole('button', { name: 'Als Founding Partner markieren' }).click()
 ok(await sichtbar(admin, '1 von 3 Plätzen vergeben'), 'Founding Partner markiert')
 const startseite = await (await fetch(`http://127.0.0.1:${PORT}/`, { headers: { host: 'maestoso.test' } })).text()
-ok(startseite.includes('Noch <!-- -->2<!-- --> von <!-- -->3') || startseite.includes('Noch 2 von 3'), 'Website zeigt noch 2 von 3 freien Plätzen')
+ok(startseite.includes('Plätze begrenzt') && !/von\s*(<!-- -->)?\s*3/.test(startseite), 'Website wirbt mit begrenzten Plätzen, ohne Zahl')
 
 // Testphase abgelaufen – gesperrt schon vor dem Cron-Lauf
 await db.from('organisationen').update({ test_bis: tageAb(-1) }).eq('id', org!.id)

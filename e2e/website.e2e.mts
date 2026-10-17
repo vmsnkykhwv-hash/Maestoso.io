@@ -37,8 +37,7 @@ ok(robots.includes('Disallow: /dashboard') && robots.includes('Disallow: /plattf
 
 // Founding Partner: Bereich mit freien Plätzen und eigener Bewerbung
 await p.goto(SEITE + '/')
-// Startseite ist bis zu 60 s zwischengespeichert – die genaue Zahl prüft testphase.e2e.mts.
-ok(await p.getByText(/Noch \d von 3 Plätzen frei/).isVisible(), 'Founding-Partner-Bereich zeigt freie Plätze')
+ok(await p.getByText('Die Plätze sind begrenzt').isVisible(), 'Founding-Partner-Bereich mit Bewerbung sichtbar')
 await p.locator('#fp-name').fill('Paul Partner')
 await p.locator('#fp-betrieb').fill('Bistro Musterbetrieb')
 await p.locator('#fp-email').fill('paul@musterbetrieb.de')

@@ -31,7 +31,6 @@ import {
   BEISPIEL_BESTELLUMSATZ,
   MINDESTLAUFZEIT_MONATE,
   PORTAL_PROVISION_PROZENT,
-  FOUNDING_PARTNER_PLAETZE,
   PREISE_OEFFENTLICH,
   PREISGARANTIE_MONATE,
   TESTPHASE_TAGE,
@@ -233,7 +232,7 @@ export default async function Startseite() {
                 className="mb-5 inline-flex flex-wrap items-center gap-x-2 rounded-full border border-m-gold/50 bg-m-gold/10 px-4 py-1.5 text-sm text-m-gold-hell transition hover:border-m-gold"
               >
                 <span className="font-semibold text-m-gold">Founding Partner gesucht</span>
-                <span>Noch {freiePlaetze} von {FOUNDING_PARTNER_PLAETZE} Plätzen mit Einführungspreis →</span>
+                <span>Einführungspreis für wenige Betriebe, Plätze begrenzt →</span>
               </Link>
             )}
             <h1 className="max-w-3xl font-marke text-3xl font-semibold leading-tight text-balance sm:text-5xl">
